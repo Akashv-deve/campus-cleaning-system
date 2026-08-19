@@ -10,14 +10,12 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  // 1. UPDATED MOCK DATA: Now shows the sweeper's name so the HOD can track them
   final List<Duty> _allDuties = [
     Duty(id: '1', roomName: 'CSE Lab 1', department: 'Assigned to: Kumar', status: DutyStatus.verified),
     Duty(id: '2', roomName: 'IoT Lab', department: 'Assigned to: Rajesh', status: DutyStatus.completed),
     Duty(id: '3', roomName: 'Classroom 301', department: 'Assigned to: Lakshmi', status: DutyStatus.pending),
   ];
 
-  // 2. NEW STATE VARIABLE: To store the saved preset in memory
   List<Duty> _dutyPreset1 = [];
 
   void _logout() {
@@ -37,14 +35,36 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  // 3. NEW FEATURE: Save current duties as a preset
+  // --- NEW: DELETE FUNCTION ---
+  void _deleteDuty(String dutyId) {
+    setState(() {
+      _allDuties.removeWhere((duty) => duty.id == dutyId);
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.delete_outline_rounded, color: Colors.white),
+            SizedBox(width: 10),
+            Text('Duty removed successfully.'),
+          ],
+        ),
+        backgroundColor: const Color(0xFFC62828),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   void _savePreset() {
     setState(() {
       _dutyPreset1 = _allDuties.map((duty) => Duty(
         id: duty.id, 
         roomName: duty.roomName,
-        department: duty.department, // This holds the sweeper name
-        status: DutyStatus.pending,  // A fresh preset should start as pending
+        department: duty.department,
+        status: DutyStatus.pending,
       )).toList();
     });
     
@@ -64,7 +84,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // 4. NEW FEATURE: Load the saved preset
   void _loadPreset() {
     if (_dutyPreset1.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -79,14 +98,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
 
     setState(() {
-      // Clear the old list and load the preset as a "fresh day"
       _allDuties.clear();
       _allDuties.addAll(
         _dutyPreset1.map((preset) => Duty(
           id: DateTime.now().microsecondsSinceEpoch.toString() + preset.roomName,
           roomName: preset.roomName,
           department: preset.department,
-          status: DutyStatus.pending, // Reset all to pending for the new day
+          status: DutyStatus.pending,
         )).toList(),
       );
     });
@@ -189,7 +207,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     Duty(
                                       id: DateTime.now().toString(),
                                       roomName: selectedRoom,
-                                      // Save the sweeper's name into the department field so it is visible
                                       department: 'Assigned to: $selectedSweeper', 
                                       status: DutyStatus.pending,
                                     ),
@@ -290,7 +307,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
           
-          // 5. THE PRESET CONTROLS UI
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
             child: Row(
@@ -338,7 +354,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       final color = _getStatusColor(duty.status);
                       return Container(
                         margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(18),
@@ -369,6 +385,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
                               child: Text(duty.status.name.toUpperCase(), style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w800)),
+                            ),
+                            const SizedBox(width: 4),
+                            
+                            // --- NEW: THE ACTUAL DELETE BUTTON ---
+                            IconButton(
+                              icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade300, size: 22),
+                              onPressed: () => _deleteDuty(duty.id),
+                              tooltip: 'Remove Duty',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
                             ),
                           ],
                         ),
