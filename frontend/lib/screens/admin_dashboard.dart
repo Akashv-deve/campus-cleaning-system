@@ -1,6 +1,7 @@
 // lib/screens/admin_dashboard.dart
 import 'package:flutter/material.dart';
 import '../models/duty_model.dart';
+import 'incharge_allotment_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -252,7 +253,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     required ValueChanged<String?> onChanged,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value, 
       decoration: InputDecoration(
         labelText: label,
         filled: true,
@@ -304,6 +305,49 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 const SizedBox(width: 12),
                 Expanded(child: _StatCard(title: 'Verified', count: verifiedCount, icon: Icons.verified_rounded, gradient: const [Color(0xFF66BB6A), Color(0xFF2E7D32)])),
               ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+            child: InkWell(
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const InchargeAllotmentScreen()));
+              },
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFF3949AB).withValues(alpha:0.15)),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha:0.03), blurRadius: 10, offset: const Offset(0, 4)),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3949AB).withValues(alpha:0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.manage_accounts_rounded, color: Color(0xFF3949AB)),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Manage Faculty Incharge', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
+                          Text('Allot professors to verify rooms', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+                  ],
+                ),
+              ),
             ),
           ),
           
@@ -359,7 +403,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(18),
                           boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 3)),
+                            BoxShadow(color: Colors.black.withValues(alpha:0.04), blurRadius: 10, offset: const Offset(0, 3)),
                           ],
                         ),
                         child: Row(
@@ -367,7 +411,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             Container(
                               width: 46,
                               height: 46,
-                              decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(14)),
+                              decoration: BoxDecoration(color: color.withValues(alpha:0.12), borderRadius: BorderRadius.circular(14)),
                               child: Icon(Icons.cleaning_services_rounded, color: color, size: 22),
                             ),
                             const SizedBox(width: 14),
@@ -383,7 +427,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
+                              decoration: BoxDecoration(color: color.withValues(alpha:0.12), borderRadius: BorderRadius.circular(20)),
                               child: Text(duty.status.name.toUpperCase(), style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w800)),
                             ),
                             const SizedBox(width: 4),
@@ -425,17 +469,17 @@ class _StatCard extends StatelessWidget {
         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: gradient),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: gradient.last.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6)),
+          BoxShadow(color: gradient.last.withValues(alpha:0.3), blurRadius: 12, offset: const Offset(0, 6)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.white.withOpacity(0.9), size: 22),
+          Icon(icon, color: Colors.white.withValues(alpha:0.9), size: 22),
           const SizedBox(height: 12),
           Text(count.toString(), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 2),
-          Text(title, style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9), fontWeight: FontWeight.w600)),
+          Text(title, style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha:0.9), fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -453,7 +497,7 @@ class _GradientFab extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         gradient: const LinearGradient(colors: [Color(0xFF3949AB), Color(0xFF5C6BC0)]),
         boxShadow: [
-          BoxShadow(color: const Color(0xFF3949AB).withOpacity(0.4), blurRadius: 14, offset: const Offset(0, 6)),
+          BoxShadow(color: const Color(0xFF3949AB).withValues(alpha:0.4), blurRadius: 14, offset: const Offset(0, 6)),
         ],
       ),
       child: Material(
