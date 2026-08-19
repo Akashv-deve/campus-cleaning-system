@@ -10,13 +10,15 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  // --- SAME MOCK DATA ---
+  // 1. UPDATED MOCK DATA: Now shows the sweeper's name so the HOD can track them
   final List<Duty> _allDuties = [
-    Duty(id: '1', roomName: 'CSE Lab 1', department: 'CSE Dept', status: DutyStatus.verified),
-    Duty(id: '2', roomName: 'IoT Lab', department: 'CSE Dept', status: DutyStatus.completed),
-    Duty(id: '3', roomName: 'Classroom 301', department: 'CSE Dept', status: DutyStatus.pending),
-    Duty(id: '4', roomName: 'HOD Cabin', department: 'CSE Dept', status: DutyStatus.pending),
+    Duty(id: '1', roomName: 'CSE Lab 1', department: 'Assigned to: Kumar', status: DutyStatus.verified),
+    Duty(id: '2', roomName: 'IoT Lab', department: 'Assigned to: Rajesh', status: DutyStatus.completed),
+    Duty(id: '3', roomName: 'Classroom 301', department: 'Assigned to: Lakshmi', status: DutyStatus.pending),
   ];
+
+  // 2. NEW STATE VARIABLE: To store the saved preset in memory
+  List<Duty> _dutyPreset1 = [];
 
   void _logout() {
     Navigator.pushReplacementNamed(context, '/');
@@ -35,10 +37,79 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  // --- SAME DIALOG LOGIC, RESTYLED ---
+  // 3. NEW FEATURE: Save current duties as a preset
+  void _savePreset() {
+    setState(() {
+      _dutyPreset1 = _allDuties.map((duty) => Duty(
+        id: duty.id, 
+        roomName: duty.roomName,
+        department: duty.department, // This holds the sweeper name
+        status: DutyStatus.pending,  // A fresh preset should start as pending
+      )).toList();
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.save_rounded, color: Colors.white),
+            SizedBox(width: 10),
+            Text('Routine saved as Duty Preset 1!'),
+          ],
+        ),
+        backgroundColor: const Color(0xFF3949AB),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  // 4. NEW FEATURE: Load the saved preset
+  void _loadPreset() {
+    if (_dutyPreset1.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('No preset saved yet. Save a preset first!'),
+          backgroundColor: const Color(0xFFC62828),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      // Clear the old list and load the preset as a "fresh day"
+      _allDuties.clear();
+      _allDuties.addAll(
+        _dutyPreset1.map((preset) => Duty(
+          id: DateTime.now().microsecondsSinceEpoch.toString() + preset.roomName,
+          roomName: preset.roomName,
+          department: preset.department,
+          status: DutyStatus.pending, // Reset all to pending for the new day
+        )).toList(),
+      );
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.restore_rounded, color: Colors.white),
+            SizedBox(width: 10),
+            Text('Duty Preset 1 loaded successfully!'),
+          ],
+        ),
+        backgroundColor: const Color(0xFF2E7D32),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
   void _showAssignDutyDialog() {
-    String selectedRoom = 'ECE Lab';
-    String selectedSweeper = 'Sweeper Kumar';
+    String selectedRoom = 'CSE Lab 1';
+    String selectedSweeper = 'Kumar';
 
     showDialog(
       context: context,
@@ -77,14 +148,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     const SizedBox(height: 24),
                     _buildDialogDropdown(
                       label: 'Select Room',
-                      value: selectedRoom, // Make sure 'selectedRoom' variable is initialized to 'CSE Lab 1' above
+                      value: selectedRoom,
                       items: const ['CSE Lab 1', 'CSE Lab 2', 'IoT Lab', 'Classroom 301', 'HOD Cabin'],
                       onChanged: (value) => setDialogState(() => selectedRoom = value!),
                     ),
                     const SizedBox(height: 16),
                     _buildDialogDropdown(
                       label: 'Assign to Sweeper',
-                      value: selectedSweeper, // Make sure 'selectedSweeper' is initialized to 'Kumar' above
+                      value: selectedSweeper,
                       items: const ['Kumar', 'Rajesh', 'Lakshmi'],
                       onChanged: (value) => setDialogState(() => selectedSweeper = value!),
                     ),
@@ -118,7 +189,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     Duty(
                                       id: DateTime.now().toString(),
                                       roomName: selectedRoom,
-                                      department: 'Assigned manually',
+                                      // Save the sweeper's name into the department field so it is visible
+                                      department: 'Assigned to: $selectedSweeper', 
                                       status: DutyStatus.pending,
                                     ),
                                   );
@@ -205,61 +277,56 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
       body: Column(
         children: [
-          // Modern stat card row
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             child: Row(
               children: [
-                Expanded(
-                  child: _StatCard(
-                    title: 'Pending',
-                    count: pendingCount,
-                    icon: Icons.pending_actions_rounded,
-                    gradient: const [Color(0xFFFFA726), Color(0xFFFB8C00)],
-                  ),
-                ),
+                Expanded(child: _StatCard(title: 'Pending', count: pendingCount, icon: Icons.pending_actions_rounded, gradient: const [Color(0xFFFFA726), Color(0xFFFB8C00)])),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: _StatCard(
-                    title: 'Awaiting Check',
-                    count: completedCount,
-                    icon: Icons.hourglass_top_rounded,
-                    gradient: const [Color(0xFF42A5F5), Color(0xFF1E88E5)],
-                  ),
-                ),
+                Expanded(child: _StatCard(title: 'Awaiting Check', count: completedCount, icon: Icons.hourglass_top_rounded, gradient: const [Color(0xFF42A5F5), Color(0xFF1E88E5)])),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: _StatCard(
-                    title: 'Verified',
-                    count: verifiedCount,
-                    icon: Icons.verified_rounded,
-                    gradient: const [Color(0xFF66BB6A), Color(0xFF2E7D32)],
-                  ),
-                ),
+                Expanded(child: _StatCard(title: 'Verified', count: verifiedCount, icon: Icons.verified_rounded, gradient: const [Color(0xFF66BB6A), Color(0xFF2E7D32)])),
               ],
             ),
           ),
+          
+          // 5. THE PRESET CONTROLS UI
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
             child: Row(
               children: [
                 Text(
                   'ALL DUTIES',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.grey.shade500,
-                    letterSpacing: 1,
-                  ),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1),
                 ),
                 const Spacer(),
-                Text(
-                  '${_allDuties.length} total',
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                TextButton.icon(
+                  onPressed: _loadPreset,
+                  icon: const Icon(Icons.restore_rounded, size: 16),
+                  label: const Text('Load Preset', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF3949AB),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                TextButton.icon(
+                  onPressed: _savePreset,
+                  icon: const Icon(Icons.save_rounded, size: 16),
+                  label: const Text('Save Preset', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF2E7D32),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                 ),
               ],
             ),
           ),
+          
           Expanded(
             child: _allDuties.isEmpty
                 ? const Center(child: Text('No duties assigned yet.'))
@@ -276,11 +343,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(18),
                           boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
+                            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 3)),
                           ],
                         ),
                         child: Row(
@@ -288,10 +351,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             Container(
                               width: 46,
                               height: 46,
-                              decoration: BoxDecoration(
-                                color: color.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
+                              decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(14)),
                               child: Icon(Icons.cleaning_services_rounded, color: color, size: 22),
                             ),
                             const SizedBox(width: 14),
@@ -299,28 +359,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    duty.roomName,
-                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5),
-                                  ),
+                                  Text(duty.roomName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5)),
                                   const SizedBox(height: 2),
-                                  Text(
-                                    duty.department,
-                                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                                  ),
+                                  Text(duty.department, style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
                                 ],
                               ),
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: color.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                duty.status.name.toUpperCase(),
-                                style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w800),
-                              ),
+                              decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
+                              child: Text(duty.status.name.toUpperCase(), style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w800)),
                             ),
                           ],
                         ),
@@ -341,30 +389,17 @@ class _StatCard extends StatelessWidget {
   final IconData icon;
   final List<Color> gradient;
 
-  const _StatCard({
-    required this.title,
-    required this.count,
-    required this.icon,
-    required this.gradient,
-  });
+  const _StatCard({required this.title, required this.count, required this.icon, required this.gradient});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 14),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: gradient,
-        ),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: gradient),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(
-            color: gradient.last.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
+          BoxShadow(color: gradient.last.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6)),
         ],
       ),
       child: Column(
@@ -372,15 +407,9 @@ class _StatCard extends StatelessWidget {
         children: [
           Icon(icon, color: Colors.white.withOpacity(0.9), size: 22),
           const SizedBox(height: 12),
-          Text(
-            count.toString(),
-            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
+          Text(count.toString(), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 2),
-          Text(
-            title,
-            style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9), fontWeight: FontWeight.w600),
-          ),
+          Text(title, style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9), fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -398,11 +427,7 @@ class _GradientFab extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         gradient: const LinearGradient(colors: [Color(0xFF3949AB), Color(0xFF5C6BC0)]),
         boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF3949AB).withOpacity(0.4),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
+          BoxShadow(color: const Color(0xFF3949AB).withOpacity(0.4), blurRadius: 14, offset: const Offset(0, 6)),
         ],
       ),
       child: Material(
@@ -417,10 +442,7 @@ class _GradientFab extends StatelessWidget {
               children: [
                 Icon(Icons.add_rounded, color: Colors.white),
                 SizedBox(width: 8),
-                Text(
-                  'Assign Duty',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
-                ),
+                Text('Assign Duty', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
               ],
             ),
           ),
