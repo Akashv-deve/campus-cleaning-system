@@ -11,7 +11,6 @@ class SweeperDashboard extends StatefulWidget {
 }
 
 class _SweeperDashboardState extends State<SweeperDashboard> {
-  // MOCK DATA: Simulating what the backend will send us
   final List<Duty> _assignedDuties = [
     Duty(id: '1', roomName: 'CSE Lab 1', department: 'Computer Science'),
     Duty(id: '2', roomName: 'Classroom 302', department: 'Mechanical'),
@@ -25,10 +24,8 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
     Duty(id: '4', roomName: 'Staff Room A', department: 'Admin', status: DutyStatus.completed),
   ];
 
-  // Logic to handle button click
   void _markAsCompleted(String dutyId) {
     setState(() {
-      // Find the duty and update its status
       final dutyIndex = _assignedDuties.indexWhere((d) => d.id == dutyId);
       if (dutyIndex != -1) {
         _assignedDuties[dutyIndex].status = DutyStatus.completed;
@@ -39,7 +36,7 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
       const SnackBar(
         content: Text('Room marked as completed. Waiting for verification.'),
         backgroundColor: Colors.green,
-        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating, // Makes it look modern
       ),
     );
   }
@@ -50,33 +47,56 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    // Calculate progress
+    int totalDuties = _assignedDuties.length;
+    int completedDuties = _assignedDuties.where((d) => d.status == DutyStatus.completed || d.status == DutyStatus.verified).length;
+    double progress = totalDuties == 0 ? 0 : completedDuties / totalDuties;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Cleaning Duties'),
+        title: const Text('My Duties'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-            tooltip: 'Logout',
-          ),
+          IconButton(icon: const Icon(Icons.logout), onPressed: _logout),
         ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              'Tasks for Today',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.blueGrey[800],
-              ),
+          // NEW: Progress Header
+          Container(
+            padding: const EdgeInsets.all(20.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(color: Colors.grey.shade200, blurRadius: 4, offset: const Offset(0, 2))
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Daily Progress', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text('$completedDuties / $totalDuties Rooms', style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.indigo)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 8,
+                  backgroundColor: Colors.indigo.shade100,
+                  color: Colors.indigo,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ],
             ),
           ),
+          const SizedBox(height: 8),
+          
           Expanded(
             child: ListView.builder(
+              padding: const EdgeInsets.only(top: 8, bottom: 20),
               itemCount: _assignedDuties.length,
               itemBuilder: (context, index) {
                 final duty = _assignedDuties[index];

@@ -11,7 +11,6 @@ class InvigilatorDashboard extends StatefulWidget {
 }
 
 class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
-  // MOCK DATA: Simulating tasks the backend says are "completed" and waiting for check
   final List<Duty> _pendingVerifications = [
     Duty(id: '1', roomName: 'CSE Lab 1', department: 'Computer Science', status: DutyStatus.completed),
     Duty(id: '2', roomName: 'Classroom 302', department: 'Mechanical', status: DutyStatus.completed),
@@ -23,14 +22,13 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
       _pendingVerifications.removeWhere((duty) => duty.id == dutyId);
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Room Verified Successfully!'), backgroundColor: Colors.green),
+      const SnackBar(content: Text('Room Verified Successfully!'), backgroundColor: Colors.green, behavior: SnackBarBehavior.floating),
     );
   }
 
   void _rejectTask(String dutyId) {
     final reasonController = TextEditingController();
 
-    // Show a dialog to get the rejection reason
     showDialog(
       context: context,
       builder: (context) {
@@ -41,6 +39,8 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
             decoration: const InputDecoration(
               hintText: 'Enter reason (e.g., Dust on windows)',
               border: OutlineInputBorder(),
+              filled: true,
+              fillColor: Colors.white,
             ),
             maxLines: 3,
           ),
@@ -53,19 +53,16 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
               onPressed: () {
                 if (reasonController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Reason is required to reject.')),
+                    const SnackBar(content: Text('Reason is required to reject.'), behavior: SnackBarBehavior.floating),
                   );
                   return;
                 }
-                
-                // Close dialog and remove task from list
                 Navigator.pop(context);
                 setState(() {
                   _pendingVerifications.removeWhere((duty) => duty.id == dutyId);
                 });
-                
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Task Rejected. Sweeper notified.'), backgroundColor: Colors.red),
+                  const SnackBar(content: Text('Task Rejected. Sweeper notified.'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
                 );
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
@@ -86,22 +83,31 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pending Verifications'),
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
         actions: [
           IconButton(icon: const Icon(Icons.logout), onPressed: _logout),
         ],
       ),
       body: _pendingVerifications.isEmpty
-          ? const Center(
-              child: Text(
-                'All rooms verified!\nGreat job.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18, color: Colors.grey),
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.verified_user_rounded, size: 80, color: Colors.green.shade300),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'All Caught Up!',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'There are no rooms waiting for verification.',
+                    style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                  ),
+                ],
               ),
             )
           : ListView.builder(
-              padding: const EdgeInsets.only(top: 16),
+              padding: const EdgeInsets.only(top: 16, bottom: 20),
               itemCount: _pendingVerifications.length,
               itemBuilder: (context, index) {
                 final duty = _pendingVerifications[index];
