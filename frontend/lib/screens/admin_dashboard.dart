@@ -12,10 +12,10 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   // --- SAME MOCK DATA ---
   final List<Duty> _allDuties = [
-    Duty(id: '1', roomName: 'CSE Lab 1', department: 'Computer Science', status: DutyStatus.verified),
-    Duty(id: '2', roomName: 'Classroom 302', department: 'Mechanical', status: DutyStatus.completed),
-    Duty(id: '3', roomName: 'Physics Lab', department: 'Science', status: DutyStatus.pending),
-    Duty(id: '4', roomName: 'Main Auditorium', department: 'Admin', status: DutyStatus.pending),
+    Duty(id: '1', roomName: 'CSE Lab 1', department: 'CSE Dept', status: DutyStatus.verified),
+    Duty(id: '2', roomName: 'IoT Lab', department: 'CSE Dept', status: DutyStatus.completed),
+    Duty(id: '3', roomName: 'Classroom 301', department: 'CSE Dept', status: DutyStatus.pending),
+    Duty(id: '4', roomName: 'HOD Cabin', department: 'CSE Dept', status: DutyStatus.pending),
   ];
 
   void _logout() {
@@ -77,15 +77,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     const SizedBox(height: 24),
                     _buildDialogDropdown(
                       label: 'Select Room',
-                      value: selectedRoom,
-                      items: const ['ECE Lab', 'Civil Workshop', 'Library', 'Main Auditorium'],
+                      value: selectedRoom, // Make sure 'selectedRoom' variable is initialized to 'CSE Lab 1' above
+                      items: const ['CSE Lab 1', 'CSE Lab 2', 'IoT Lab', 'Classroom 301', 'HOD Cabin'],
                       onChanged: (value) => setDialogState(() => selectedRoom = value!),
                     ),
                     const SizedBox(height: 16),
                     _buildDialogDropdown(
                       label: 'Assign to Sweeper',
-                      value: selectedSweeper,
-                      items: const ['Sweeper Kumar', 'Sweeper Ramesh', 'Sweeper Lakshmi'],
+                      value: selectedSweeper, // Make sure 'selectedSweeper' is initialized to 'Kumar' above
+                      items: const ['Kumar', 'Rajesh', 'Lakshmi'],
                       onChanged: (value) => setDialogState(() => selectedSweeper = value!),
                     ),
                     const SizedBox(height: 28),

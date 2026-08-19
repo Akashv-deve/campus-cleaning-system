@@ -11,21 +11,20 @@ class SweeperDashboard extends StatefulWidget {
 }
 
 class _SweeperDashboardState extends State<SweeperDashboard> {
-  // --- SAME MOCK DATA & STATE ---
+  // CSE-ONLY MOCK DATA
   final List<Duty> _assignedDuties = [
-    Duty(id: '1', roomName: 'CSE Lab 1', department: 'Computer Science'),
-    Duty(id: '2', roomName: 'Classroom 302', department: 'Mechanical'),
+    Duty(id: '1', roomName: 'CSE Lab 1', department: 'CSE Dept'),
+    Duty(id: '2', roomName: 'CSE Lab 2', department: 'CSE Dept'),
     Duty(
       id: '3',
-      roomName: 'Physics Lab',
-      department: 'Science',
+      roomName: 'IoT Lab',
+      department: 'CSE Dept',
       status: DutyStatus.rejected,
-      rejectionReason: 'Dust found on the lab tables and windows not closed.',
+      rejectionReason: 'Dust found on the monitors and keyboards.',
     ),
-    Duty(id: '4', roomName: 'Staff Room A', department: 'Admin', status: DutyStatus.completed),
+    Duty(id: '4', roomName: 'HOD Cabin', department: 'CSE Dept', status: DutyStatus.completed),
   ];
 
-  // --- SAME LOGIC, UNCHANGED ---
   void _markAsCompleted(String dutyId) {
     setState(() {
       final dutyIndex = _assignedDuties.indexWhere((d) => d.id == dutyId);
@@ -103,7 +102,6 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
     );
   }
 
-  // Big, warm, encouraging progress banner.
   Widget _buildProgressHeader(int completed, int total, double progress) {
     final bool allDone = total > 0 && completed == total;
     final String message = allDone

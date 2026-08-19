@@ -11,14 +11,13 @@ class InvigilatorDashboard extends StatefulWidget {
 }
 
 class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
-  // --- SAME MOCK DATA & STATE ---
+  // CSE-ONLY MOCK DATA
   final List<Duty> _pendingVerifications = [
-    Duty(id: '1', roomName: 'CSE Lab 1', department: 'Computer Science', status: DutyStatus.completed),
-    Duty(id: '2', roomName: 'Classroom 302', department: 'Mechanical', status: DutyStatus.completed),
-    Duty(id: '3', roomName: 'Staff Room A', department: 'Admin', status: DutyStatus.completed),
+    Duty(id: '1', roomName: 'CSE Lab 1', department: 'CSE Dept', status: DutyStatus.completed),
+    Duty(id: '2', roomName: 'IoT Lab', department: 'CSE Dept', status: DutyStatus.completed),
+    Duty(id: '3', roomName: 'Classroom 301', department: 'CSE Dept', status: DutyStatus.completed),
   ];
 
-  // --- SAME LOGIC, UNCHANGED ---
   void _verifyTask(String dutyId) {
     setState(() {
       _pendingVerifications.removeWhere((duty) => duty.id == dutyId);
