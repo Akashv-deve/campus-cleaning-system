@@ -16,12 +16,30 @@ class CampusCleaningApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Campus Cleaning System',
+      debugShowCheckedModeBanner: false, // Hides the "DEBUG" banner for the pitch
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        scaffoldBackgroundColor: Colors.grey[100],
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.indigo,
+          secondary: Colors.amber,
+        ),
+        scaffoldBackgroundColor: Colors.grey[50],
+        appBarTheme: const AppBarTheme(
+          centerTitle: true,
+          backgroundColor: Colors.indigo,
+          foregroundColor: Colors.white,
+          elevation: 2,
+          shadowColor: Colors.black26,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
       ),
-      // Define all your app routes here for clean navigation
       initialRoute: '/',
       routes: {
         '/': (context) => const LoginScreen(),
