@@ -11,19 +11,21 @@ class SweeperDashboard extends StatefulWidget {
 }
 
 class _SweeperDashboardState extends State<SweeperDashboard> {
+  // --- SAME MOCK DATA & STATE ---
   final List<Duty> _assignedDuties = [
     Duty(id: '1', roomName: 'CSE Lab 1', department: 'Computer Science'),
     Duty(id: '2', roomName: 'Classroom 302', department: 'Mechanical'),
     Duty(
-      id: '3', 
-      roomName: 'Physics Lab', 
-      department: 'Science', 
+      id: '3',
+      roomName: 'Physics Lab',
+      department: 'Science',
       status: DutyStatus.rejected,
       rejectionReason: 'Dust found on the lab tables and windows not closed.',
     ),
     Duty(id: '4', roomName: 'Staff Room A', department: 'Admin', status: DutyStatus.completed),
   ];
 
+  // --- SAME LOGIC, UNCHANGED ---
   void _markAsCompleted(String dutyId) {
     setState(() {
       final dutyIndex = _assignedDuties.indexWhere((d) => d.id == dutyId);
@@ -34,9 +36,13 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Room marked as completed. Waiting for verification.'),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating, // Makes it look modern
+        content: Text(
+          'Room marked as completed. Waiting for verification.',
+          style: TextStyle(fontSize: 16),
+        ),
+        backgroundColor: Color(0xFF2E7D32),
+        behavior: SnackBarBehavior.floating,
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       ),
     );
   }
@@ -47,67 +53,189 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate progress
-    int totalDuties = _assignedDuties.length;
-    int completedDuties = _assignedDuties.where((d) => d.status == DutyStatus.completed || d.status == DutyStatus.verified).length;
-    double progress = totalDuties == 0 ? 0 : completedDuties / totalDuties;
+    final int totalDuties = _assignedDuties.length;
+    final int completedDuties = _assignedDuties
+        .where((d) => d.status == DutyStatus.completed || d.status == DutyStatus.verified)
+        .length;
+    final double progress = totalDuties == 0 ? 0 : completedDuties / totalDuties;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F8),
       appBar: AppBar(
-        title: const Text('My Duties'),
+        backgroundColor: const Color(0xFF1B5E20),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'My Duties Today',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
         actions: [
-          IconButton(icon: const Icon(Icons.logout), onPressed: _logout),
+          IconButton(
+            iconSize: 30,
+            tooltip: 'Log out',
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+          ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // NEW: Progress Header
-          Container(
-            padding: const EdgeInsets.all(20.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(color: Colors.grey.shade200, blurRadius: 4, offset: const Offset(0, 2))
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Daily Progress', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text('$completedDuties / $totalDuties Rooms', style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.indigo)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 8,
-                  backgroundColor: Colors.indigo.shade100,
-                  color: Colors.indigo,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          
+          _buildProgressHeader(completedDuties, totalDuties, progress),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.only(top: 8, bottom: 20),
-              itemCount: _assignedDuties.length,
-              itemBuilder: (context, index) {
-                final duty = _assignedDuties[index];
-                return RoomCard(
-                  duty: duty,
-                  onComplete: () => _markAsCompleted(duty.id),
-                );
-              },
-            ),
+            child: _assignedDuties.isEmpty
+                ? const _EmptyState()
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    itemCount: _assignedDuties.length,
+                    itemBuilder: (context, index) {
+                      final duty = _assignedDuties[index];
+                      return RoomCard(
+                        duty: duty,
+                        onComplete: () => _markAsCompleted(duty.id),
+                      );
+                    },
+                  ),
           ),
         ],
+      ),
+    );
+  }
+
+  // Big, warm, encouraging progress banner.
+  Widget _buildProgressHeader(int completed, int total, double progress) {
+    final bool allDone = total > 0 && completed == total;
+    final String message = allDone
+        ? "🎉 Amazing! All rooms done!"
+        : completed == 0
+            ? "Let's get started!"
+            : "Great work — keep going!";
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B5E20),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(28),
+          bottomRight: Radius.circular(28),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            message,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              SizedBox(
+                width: 84,
+                height: 84,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: progress),
+                      duration: const Duration(milliseconds: 700),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, _) => CircularProgressIndicator(
+                        value: value,
+                        strokeWidth: 10,
+                        backgroundColor: Colors.white.withOpacity(0.25),
+                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFA5D6A7)),
+                      ),
+                    ),
+                    Text(
+                      '${(progress * 100).round()}%',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$completed of $total rooms done',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: progress),
+                        duration: const Duration(milliseconds: 700),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, value, _) => LinearProgressIndicator(
+                          value: value,
+                          minHeight: 14,
+                          backgroundColor: Colors.white.withOpacity(0.25),
+                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFA5D6A7)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.emoji_events_rounded, size: 96, color: Colors.amber.shade600),
+            const SizedBox(height: 20),
+            const Text(
+              'No duties assigned yet.',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Check back soon — your rooms will show up here.',
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
