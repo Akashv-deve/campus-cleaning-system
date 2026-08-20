@@ -1,5 +1,7 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart'; // NEW IMPORT
+
 import 'screens/login_screen.dart';
 import 'screens/admin_dashboard.dart';
 import 'screens/sweeper_dashboard.dart';
@@ -16,28 +18,37 @@ class CampusCleaningApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Campus Cleaning System',
-      debugShowCheckedModeBanner: false, // Hides the "DEBUG" banner for the pitch
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
+        // 1. APPLY GOOGLE FONTS GLOBALLY
+        textTheme: GoogleFonts.nunitoTextTheme(
+          Theme.of(context).textTheme,
+        ),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.indigo,
+          seedColor: const Color(0xFF3949AB), // Deep Indigo
           secondary: Colors.amber,
         ),
-        scaffoldBackgroundColor: Colors.grey[50],
-        appBarTheme: const AppBarTheme(
+        scaffoldBackgroundColor: const Color(0xFFF4F6F8),
+        appBarTheme: AppBarTheme(
           centerTitle: true,
-          backgroundColor: Colors.indigo,
-          foregroundColor: Colors.white,
-          elevation: 2,
-          shadowColor: Colors.black26,
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+          backgroundColor: const Color(0xFFF4F6F8),
+          foregroundColor: Colors.black87,
+          elevation: 0,
+          // Make AppBar titles use the custom font and make them bold
+          titleTextStyle: GoogleFonts.nunito(
+            color: Colors.black87,
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
           ),
+        ),
+        // 2. SMOOTH PAGE TRANSITIONS
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            // This gives a beautiful, soft fade-up effect when changing screens
+            TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          },
         ),
       ),
       initialRoute: '/',

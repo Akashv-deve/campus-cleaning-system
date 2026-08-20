@@ -219,7 +219,7 @@ class _AllCaughtUpState extends StatelessWidget {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.green.withOpacity(0.25),
+                      color: Colors.green.withValues(alpha:0.25),
                       blurRadius: 24,
                       offset: const Offset(0, 10),
                     ),

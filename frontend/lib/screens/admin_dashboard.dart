@@ -25,62 +25,31 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Color _getStatusColor(DutyStatus status) {
     switch (status) {
-      case DutyStatus.pending:
-        return const Color(0xFFEF6C00);
-      case DutyStatus.completed:
-        return const Color(0xFF1565C0);
-      case DutyStatus.verified:
-        return const Color(0xFF2E7D32);
-      case DutyStatus.rejected:
-        return const Color(0xFFC62828);
+      case DutyStatus.pending: return const Color(0xFFEF6C00);
+      case DutyStatus.completed: return const Color(0xFF1565C0);
+      case DutyStatus.verified: return const Color(0xFF2E7D32);
+      case DutyStatus.rejected: return const Color(0xFFC62828);
     }
   }
 
-  // --- NEW: DELETE FUNCTION ---
   void _deleteDuty(String dutyId) {
-    setState(() {
-      _allDuties.removeWhere((duty) => duty.id == dutyId);
-    });
-    
+    setState(() => _allDuties.removeWhere((duty) => duty.id == dutyId));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.delete_outline_rounded, color: Colors.white),
-            SizedBox(width: 10),
-            Text('Duty removed successfully.'),
-          ],
-        ),
-        backgroundColor: const Color(0xFFC62828),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        duration: const Duration(seconds: 2),
+        content: const Row(children: [Icon(Icons.delete_outline_rounded, color: Colors.white), SizedBox(width: 10), Text('Duty removed successfully.')]),
+        backgroundColor: const Color(0xFFC62828), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 2),
       ),
     );
   }
 
   void _savePreset() {
     setState(() {
-      _dutyPreset1 = _allDuties.map((duty) => Duty(
-        id: duty.id, 
-        roomName: duty.roomName,
-        department: duty.department,
-        status: DutyStatus.pending,
-      )).toList();
+      _dutyPreset1 = _allDuties.map((duty) => Duty(id: duty.id, roomName: duty.roomName, department: duty.department, status: DutyStatus.pending)).toList();
     });
-    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.save_rounded, color: Colors.white),
-            SizedBox(width: 10),
-            Text('Routine saved as Duty Preset 1!'),
-          ],
-        ),
-        backgroundColor: const Color(0xFF3949AB),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: const Row(children: [Icon(Icons.save_rounded, color: Colors.white), SizedBox(width: 10), Text('Routine saved as Duty Preset 1!')]),
+        backgroundColor: const Color(0xFF3949AB), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -88,40 +57,104 @@ class _AdminDashboardState extends State<AdminDashboard> {
   void _loadPreset() {
     if (_dutyPreset1.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('No preset saved yet. Save a preset first!'),
-          backgroundColor: const Color(0xFFC62828),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
+        SnackBar(content: const Text('No preset saved yet. Save a preset first!'), backgroundColor: const Color(0xFFC62828), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
       );
       return;
     }
-
     setState(() {
       _allDuties.clear();
-      _allDuties.addAll(
-        _dutyPreset1.map((preset) => Duty(
-          id: DateTime.now().microsecondsSinceEpoch.toString() + preset.roomName,
-          roomName: preset.roomName,
-          department: preset.department,
-          status: DutyStatus.pending,
-        )).toList(),
-      );
+      _allDuties.addAll(_dutyPreset1.map((preset) => Duty(id: DateTime.now().microsecondsSinceEpoch.toString() + preset.roomName, roomName: preset.roomName, department: preset.department, status: DutyStatus.pending)).toList());
     });
-
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
+      SnackBar(content: const Row(children: [Icon(Icons.restore_rounded, color: Colors.white), SizedBox(width: 10), Text('Duty Preset 1 loaded successfully!')]), backgroundColor: const Color(0xFF2E7D32), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+    );
+  }
+
+  // --- NEW: PDF GENERATION BOTTOM SHEET ---
+  void _showReportSelector(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
+              const SizedBox(height: 24),
+              const Row(
+                children: [
+                  Icon(Icons.analytics_rounded, color: Color(0xFF3949AB), size: 28),
+                  SizedBox(width: 12),
+                  Text('Generate Reports', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87)),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _buildReportOption(
+                context,
+                title: 'Sweeper Log Report',
+                subtitle: 'Daily attendance & completion stats',
+                icon: Icons.person_search_rounded,
+                color: const Color(0xFF00897B),
+              ),
+              const SizedBox(height: 12),
+              _buildReportOption(
+                context,
+                title: 'Classroom Status Log',
+                subtitle: 'Verification history by faculty',
+                icon: Icons.meeting_room_rounded,
+                color: const Color(0xFFE53935),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildReportOption(BuildContext context, {required String title, required String subtitle, required IconData icon, required Color color}) {
+    return InkWell(
+      onTap: () {
+        Navigator.pop(context);
+        _simulatePdfDownload(title);
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5), borderRadius: BorderRadius.circular(16), color: color.withValues(alpha: 0.05)),
+        child: Row(
           children: [
-            Icon(Icons.restore_rounded, color: Colors.white),
-            SizedBox(width: 10),
-            Text('Duty Preset 1 loaded successfully!'),
+            Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: color, size: 26)),
+            const SizedBox(width: 16),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)), const SizedBox(height: 2), Text(subtitle, style: TextStyle(color: Colors.grey.shade700, fontSize: 13))])),
+            Icon(Icons.download_rounded, color: color),
           ],
         ),
-        backgroundColor: const Color(0xFF2E7D32),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  void _simulatePdfDownload(String reportName) async {
+    // Show a loading snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(children: [const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)), const SizedBox(width: 16), Text('Generating $reportName...')]),
+        backgroundColor: const Color(0xFF3949AB), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 2),
+      ),
+    );
+
+    // Wait for 2 seconds to simulate backend fetching and PDF creation
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+    
+    // Show success snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(children: [Icon(Icons.check_circle_rounded, color: Colors.white), SizedBox(width: 12), Text('PDF Saved to Downloads Folder!')]),
+        backgroundColor: const Color(0xFF2E7D32), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -145,91 +178,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   children: [
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF3949AB), Color(0xFF5C6BC0)],
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Icon(Icons.add_task_rounded, color: Colors.white),
-                        ),
+                        Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF3949AB), Color(0xFF5C6BC0)]), borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.add_task_rounded, color: Colors.white)),
                         const SizedBox(width: 16),
-                        const Expanded(
-                          child: Text(
-                            'Assign New Duty',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                          ),
-                        ),
+                        const Expanded(child: Text('Assign New Duty', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
                       ],
                     ),
                     const SizedBox(height: 24),
-                    _buildDialogDropdown(
-                      label: 'Select Room',
-                      value: selectedRoom,
-                      items: const ['CSE Lab 1', 'CSE Lab 2', 'IoT Lab', 'Classroom 301', 'HOD Cabin'],
-                      onChanged: (value) => setDialogState(() => selectedRoom = value!),
-                    ),
+                    _buildDialogDropdown(label: 'Select Room', initialValue: selectedRoom, items: const ['CSE Lab 1', 'CSE Lab 2', 'IoT Lab', 'Classroom 301', 'HOD Cabin'], onChanged: (value) => setDialogState(() => selectedRoom = value!)),
                     const SizedBox(height: 16),
-                    _buildDialogDropdown(
-                      label: 'Assign to Sweeper',
-                      value: selectedSweeper,
-                      items: const ['Kumar', 'Rajesh', 'Lakshmi'],
-                      onChanged: (value) => setDialogState(() => selectedSweeper = value!),
-                    ),
+                    _buildDialogDropdown(label: 'Assign to Sweeper', initialValue: selectedSweeper, items: const ['Kumar', 'Rajesh', 'Lakshmi'], onChanged: (value) => setDialogState(() => selectedSweeper = value!)),
                     const SizedBox(height: 28),
                     Row(
                       children: [
-                        Expanded(
-                          child: TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            ),
-                            child: const Text('Cancel'),
-                          ),
-                        ),
+                        Expanded(child: TextButton(onPressed: () => Navigator.pop(context), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: const Text('Cancel'))),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Container(
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF3949AB), Color(0xFF5C6BC0)],
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
+                            decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF3949AB), Color(0xFF5C6BC0)]), borderRadius: BorderRadius.circular(14)),
                             child: ElevatedButton(
                               onPressed: () {
                                 setState(() {
-                                  _allDuties.insert(
-                                    0,
-                                    Duty(
-                                      id: DateTime.now().toString(),
-                                      roomName: selectedRoom,
-                                      department: 'Assigned to: $selectedSweeper', 
-                                      status: DutyStatus.pending,
-                                    ),
-                                  );
+                                  _allDuties.insert(0, Duty(id: DateTime.now().toString(), roomName: selectedRoom, department: 'Assigned to: $selectedSweeper', status: DutyStatus.pending));
                                 });
                                 Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Duty assigned to $selectedSweeper successfully!'),
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    margin: const EdgeInsets.all(16),
-                                  ),
-                                );
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Duty assigned to $selectedSweeper successfully!'), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), margin: const EdgeInsets.all(16)));
                               },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                shadowColor: Colors.transparent,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                              ),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
                               child: const Text('Assign', style: TextStyle(fontWeight: FontWeight.w700)),
                             ),
                           ),
@@ -246,24 +220,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildDialogDropdown({
-    required String label,
-    required String value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-  }) {
+  Widget _buildDialogDropdown({required String label, required String initialValue, required List<String> items, required ValueChanged<String?> onChanged}) {
     return DropdownButtonFormField<String>(
-      initialValue: value, 
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: const Color(0xFFF7F7FA),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      ),
+      initialValue: initialValue,
+      decoration: InputDecoration(labelText: label, filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
       items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
       onChanged: onChanged,
     );
@@ -278,20 +238,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F8),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF3F4F8),
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        title: const Text(
-          'Admin Overview',
-          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black87, fontSize: 20),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.black54),
-            onPressed: _logout,
-          ),
-          const SizedBox(width: 4),
-        ],
+        backgroundColor: const Color(0xFFF3F4F8), elevation: 0, surfaceTintColor: Colors.transparent,
+        title: const Text('Admin Overview', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black87, fontSize: 20)),
+        actions: [IconButton(icon: const Icon(Icons.logout_rounded, color: Colors.black54), onPressed: _logout), const SizedBox(width: 4)],
       ),
       body: Column(
         children: [
@@ -307,44 +256,43 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ],
             ),
           ),
+          
+          // FACULTY ALLOTMENT CARD
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
             child: InkWell(
-              onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const InchargeAllotmentScreen()));
-              },
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const InchargeAllotmentScreen())),
               borderRadius: BorderRadius.circular(18),
               child: Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFF3949AB).withValues(alpha:0.15)),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha:0.03), blurRadius: 10, offset: const Offset(0, 4)),
-                  ],
-                ),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFF3949AB).withValues(alpha: 0.15)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))]),
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3949AB).withValues(alpha:0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.manage_accounts_rounded, color: Color(0xFF3949AB)),
-                    ),
+                    Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFF3949AB).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.manage_accounts_rounded, color: Color(0xFF3949AB))),
                     const SizedBox(width: 16),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Manage Faculty Incharge', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
-                          Text('Allot professors to verify rooms', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500)),
-                        ],
-                      ),
-                    ),
+                    const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Manage Faculty Incharge', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)), Text('Allot professors to verify rooms', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500))])),
                     const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // --- NEW: GENERATE REPORTS CARD ---
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: InkWell(
+              onTap: () => _showReportSelector(context),
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFD32F2F).withValues(alpha: 0.2)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))]),
+                child: Row(
+                  children: [
+                    Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFD32F2F).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFD32F2F))),
+                    const SizedBox(width: 16),
+                    const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Generate PDF Reports', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)), Text('Download classroom & sweeper logs', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500))])),
+                    const Icon(Icons.file_download_rounded, color: Colors.grey),
                   ],
                 ),
               ),
@@ -352,37 +300,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
           
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
             child: Row(
               children: [
-                Text(
-                  'ALL DUTIES',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1),
-                ),
+                Text('ALL DUTIES', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1)),
                 const Spacer(),
-                TextButton.icon(
-                  onPressed: _loadPreset,
-                  icon: const Icon(Icons.restore_rounded, size: 16),
-                  label: const Text('Load Preset', style: TextStyle(fontWeight: FontWeight.bold)),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF3949AB),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
+                TextButton.icon(onPressed: _loadPreset, icon: const Icon(Icons.restore_rounded, size: 16), label: const Text('Load Preset', style: TextStyle(fontWeight: FontWeight.bold)), style: TextButton.styleFrom(foregroundColor: const Color(0xFF3949AB), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap)),
                 const SizedBox(width: 12),
-                TextButton.icon(
-                  onPressed: _savePreset,
-                  icon: const Icon(Icons.save_rounded, size: 16),
-                  label: const Text('Save Preset', style: TextStyle(fontWeight: FontWeight.bold)),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF2E7D32),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
+                TextButton.icon(onPressed: _savePreset, icon: const Icon(Icons.save_rounded, size: 16), label: const Text('Save Preset', style: TextStyle(fontWeight: FontWeight.bold)), style: TextButton.styleFrom(foregroundColor: const Color(0xFF2E7D32), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap)),
               ],
             ),
           ),
@@ -399,47 +324,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withValues(alpha:0.04), blurRadius: 10, offset: const Offset(0, 3)),
-                          ],
-                        ),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 3))]),
                         child: Row(
                           children: [
-                            Container(
-                              width: 46,
-                              height: 46,
-                              decoration: BoxDecoration(color: color.withValues(alpha:0.12), borderRadius: BorderRadius.circular(14)),
-                              child: Icon(Icons.cleaning_services_rounded, color: color, size: 22),
-                            ),
+                            Container(width: 46, height: 46, decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)), child: Icon(Icons.cleaning_services_rounded, color: color, size: 22)),
                             const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(duty.roomName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5)),
-                                  const SizedBox(height: 2),
-                                  Text(duty.department, style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(color: color.withValues(alpha:0.12), borderRadius: BorderRadius.circular(20)),
-                              child: Text(duty.status.name.toUpperCase(), style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w800)),
-                            ),
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(duty.roomName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5)), const SizedBox(height: 2), Text(duty.department, style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w600))])),
+                            Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)), child: Text(duty.status.name.toUpperCase(), style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w800))),
                             const SizedBox(width: 4),
-                            
-                            // --- NEW: THE ACTUAL DELETE BUTTON ---
-                            IconButton(
-                              icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade300, size: 22),
-                              onPressed: () => _deleteDuty(duty.id),
-                              tooltip: 'Remove Duty',
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
+                            IconButton(icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade300, size: 22), onPressed: () => _deleteDuty(duty.id), tooltip: 'Remove Duty', padding: EdgeInsets.zero, constraints: const BoxConstraints()),
                           ],
                         ),
                       );
@@ -465,21 +358,15 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: gradient),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: gradient.last.withValues(alpha:0.3), blurRadius: 12, offset: const Offset(0, 6)),
-        ],
-      ),
+      decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: gradient), borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: gradient.last.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6))]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.white.withValues(alpha:0.9), size: 22),
+          Icon(icon, color: Colors.white.withValues(alpha: 0.9), size: 22),
           const SizedBox(height: 12),
           Text(count.toString(), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 2),
-          Text(title, style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha:0.9), fontWeight: FontWeight.w600)),
+          Text(title, style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.9), fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -493,13 +380,7 @@ class _GradientFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: const LinearGradient(colors: [Color(0xFF3949AB), Color(0xFF5C6BC0)]),
-        boxShadow: [
-          BoxShadow(color: const Color(0xFF3949AB).withValues(alpha:0.4), blurRadius: 14, offset: const Offset(0, 6)),
-        ],
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), gradient: const LinearGradient(colors: [Color(0xFF3949AB), Color(0xFF5C6BC0)]), boxShadow: [BoxShadow(color: const Color(0xFF3949AB).withValues(alpha: 0.4), blurRadius: 14, offset: const Offset(0, 6))]),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -507,14 +388,7 @@ class _GradientFab extends StatelessWidget {
           onTap: onPressed,
           child: const Padding(
             padding: EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.add_rounded, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Assign Duty', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
-              ],
-            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.add_rounded, color: Colors.white), SizedBox(width: 8), Text('Assign Duty', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15))]),
           ),
         ),
       ),

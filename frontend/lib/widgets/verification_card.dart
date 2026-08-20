@@ -71,12 +71,12 @@ class VerificationCard extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.92),
+              color: Colors.white.withValues(alpha:0.92),
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: Colors.black.withOpacity(0.04)),
+              border: Border.all(color: Colors.black.withValues(alpha:0.04)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
+                  color: Colors.black.withValues(alpha:0.06),
                   blurRadius: 18,
                   offset: const Offset(0, 8),
                 ),
@@ -184,7 +184,7 @@ class VerificationCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       alignment: alignment,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha:0.15),
         borderRadius: BorderRadius.circular(22),
       ),
       child: Row(

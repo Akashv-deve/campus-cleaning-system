@@ -63,10 +63,10 @@ class RoomCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: style.color.withOpacity(0.25), width: 1.5),
+        border: Border.all(color: style.color.withValues(alpha:0.25), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha:0.06),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

@@ -121,7 +121,7 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha:0.15),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -154,7 +154,7 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
                       builder: (context, value, _) => CircularProgressIndicator(
                         value: value,
                         strokeWidth: 10,
-                        backgroundColor: Colors.white.withOpacity(0.25),
+                        backgroundColor: Colors.white.withValues(alpha:0.25),
                         valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFA5D6A7)),
                       ),
                     ),
@@ -192,7 +192,7 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
                         builder: (context, value, _) => LinearProgressIndicator(
                           value: value,
                           minHeight: 14,
-                          backgroundColor: Colors.white.withOpacity(0.25),
+                          backgroundColor: Colors.white.withValues(alpha:0.25),
                           valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFA5D6A7)),
                         ),
                       ),
