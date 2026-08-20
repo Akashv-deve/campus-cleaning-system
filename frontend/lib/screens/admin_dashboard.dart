@@ -11,10 +11,14 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
+  // NEW: State variable for the active filter
+  String _selectedFilter = 'All';
+
   final List<Duty> _allDuties = [
     Duty(id: '1', roomName: 'CSE Lab 1', department: 'Assigned to: Kumar', status: DutyStatus.verified),
     Duty(id: '2', roomName: 'IoT Lab', department: 'Assigned to: Rajesh', status: DutyStatus.completed),
     Duty(id: '3', roomName: 'Classroom 301', department: 'Assigned to: Lakshmi', status: DutyStatus.pending),
+    Duty(id: '4', roomName: 'HOD Cabin', department: 'Assigned to: Meena', status: DutyStatus.pending),
   ];
 
   List<Duty> _dutyPreset1 = [];
@@ -32,50 +36,37 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
+  // --- PRESET & DELETE FUNCTIONS (Same as before) ---
   void _deleteDuty(String dutyId) {
     setState(() => _allDuties.removeWhere((duty) => duty.id == dutyId));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(children: [Icon(Icons.delete_outline_rounded, color: Colors.white), SizedBox(width: 10), Text('Duty removed successfully.')]),
-        backgroundColor: const Color(0xFFC62828), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 2),
-      ),
+      SnackBar(content: const Row(children: [Icon(Icons.delete_outline_rounded, color: Colors.white), SizedBox(width: 10), Text('Duty removed successfully.')]), backgroundColor: const Color(0xFFC62828), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 2)),
     );
   }
 
   void _savePreset() {
-    setState(() {
-      _dutyPreset1 = _allDuties.map((duty) => Duty(id: duty.id, roomName: duty.roomName, department: duty.department, status: DutyStatus.pending)).toList();
-    });
+    setState(() => _dutyPreset1 = _allDuties.map((duty) => Duty(id: duty.id, roomName: duty.roomName, department: duty.department, status: DutyStatus.pending)).toList());
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(children: [Icon(Icons.save_rounded, color: Colors.white), SizedBox(width: 10), Text('Routine saved as Duty Preset 1!')]),
-        backgroundColor: const Color(0xFF3949AB), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
+      SnackBar(content: const Row(children: [Icon(Icons.save_rounded, color: Colors.white), SizedBox(width: 10), Text('Routine saved as Duty Preset 1!')]), backgroundColor: const Color(0xFF3949AB), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
     );
   }
 
   void _loadPreset() {
     if (_dutyPreset1.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('No preset saved yet. Save a preset first!'), backgroundColor: const Color(0xFFC62828), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('No preset saved yet. Save a preset first!'), backgroundColor: const Color(0xFFC62828), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
       return;
     }
     setState(() {
       _allDuties.clear();
       _allDuties.addAll(_dutyPreset1.map((preset) => Duty(id: DateTime.now().microsecondsSinceEpoch.toString() + preset.roomName, roomName: preset.roomName, department: preset.department, status: DutyStatus.pending)).toList());
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: const Row(children: [Icon(Icons.restore_rounded, color: Colors.white), SizedBox(width: 10), Text('Duty Preset 1 loaded successfully!')]), backgroundColor: const Color(0xFF2E7D32), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Row(children: [Icon(Icons.restore_rounded, color: Colors.white), SizedBox(width: 10), Text('Duty Preset 1 loaded successfully!')]), backgroundColor: const Color(0xFF2E7D32), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
   }
 
-  // --- NEW: PDF GENERATION BOTTOM SHEET ---
+  // --- PDF REPORT FUNCTION (Same as before) ---
   void _showReportSelector(BuildContext context) {
     showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      context: context, backgroundColor: Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (context) {
         return Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
@@ -84,29 +75,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
             children: [
               Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
               const SizedBox(height: 24),
-              const Row(
-                children: [
-                  Icon(Icons.analytics_rounded, color: Color(0xFF3949AB), size: 28),
-                  SizedBox(width: 12),
-                  Text('Generate Reports', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87)),
-                ],
-              ),
+              const Row(children: [Icon(Icons.analytics_rounded, color: Color(0xFF3949AB), size: 28), SizedBox(width: 12), Text('Generate Reports', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87))]),
               const SizedBox(height: 24),
-              _buildReportOption(
-                context,
-                title: 'Sweeper Log Report',
-                subtitle: 'Daily attendance & completion stats',
-                icon: Icons.person_search_rounded,
-                color: const Color(0xFF00897B),
-              ),
+              _buildReportOption(context, title: 'Sweeper Log Report', subtitle: 'Daily attendance & completion stats', icon: Icons.person_search_rounded, color: const Color(0xFF00897B)),
               const SizedBox(height: 12),
-              _buildReportOption(
-                context,
-                title: 'Classroom Status Log',
-                subtitle: 'Verification history by faculty',
-                icon: Icons.meeting_room_rounded,
-                color: const Color(0xFFE53935),
-              ),
+              _buildReportOption(context, title: 'Classroom Status Log', subtitle: 'Verification history by faculty', icon: Icons.meeting_room_rounded, color: const Color(0xFFE53935)),
             ],
           ),
         );
@@ -116,10 +89,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget _buildReportOption(BuildContext context, {required String title, required String subtitle, required IconData icon, required Color color}) {
     return InkWell(
-      onTap: () {
-        Navigator.pop(context);
-        _simulatePdfDownload(title);
-      },
+      onTap: () { Navigator.pop(context); _simulatePdfDownload(title); },
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -137,32 +107,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   void _simulatePdfDownload(String reportName) async {
-    // Show a loading snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(children: [const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)), const SizedBox(width: 16), Text('Generating $reportName...')]),
-        backgroundColor: const Color(0xFF3949AB), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 2),
-      ),
-    );
-
-    // Wait for 2 seconds to simulate backend fetching and PDF creation
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)), const SizedBox(width: 16), Text('Generating $reportName...')]), backgroundColor: const Color(0xFF3949AB), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 2)));
     await Future.delayed(const Duration(seconds: 2));
-
     if (!mounted) return;
-    
-    // Show success snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(children: [Icon(Icons.check_circle_rounded, color: Colors.white), SizedBox(width: 12), Text('PDF Saved to Downloads Folder!')]),
-        backgroundColor: const Color(0xFF2E7D32), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 3),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Row(children: [Icon(Icons.check_circle_rounded, color: Colors.white), SizedBox(width: 12), Text('PDF Saved to Downloads Folder!')]), backgroundColor: const Color(0xFF2E7D32), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 3)));
   }
 
+  // --- ASSIGN DIALOG (Same as before) ---
   void _showAssignDutyDialog() {
     String selectedRoom = 'CSE Lab 1';
     String selectedSweeper = 'Kumar';
-
     showDialog(
       context: context,
       builder: (context) {
@@ -176,38 +130,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF3949AB), Color(0xFF5C6BC0)]), borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.add_task_rounded, color: Colors.white)),
-                        const SizedBox(width: 16),
-                        const Expanded(child: Text('Assign New Duty', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
-                      ],
-                    ),
+                    Row(children: [Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF3949AB), Color(0xFF5C6BC0)]), borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.add_task_rounded, color: Colors.white)), const SizedBox(width: 16), const Expanded(child: Text('Assign New Duty', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)))]),
                     const SizedBox(height: 24),
-                    _buildDialogDropdown(label: 'Select Room', initialValue: selectedRoom, items: const ['CSE Lab 1', 'CSE Lab 2', 'IoT Lab', 'Classroom 301', 'HOD Cabin'], onChanged: (value) => setDialogState(() => selectedRoom = value!)),
+                    DropdownButtonFormField<String>(initialValue: selectedRoom, decoration: InputDecoration(labelText: 'Select Room', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)), items: const ['CSE Lab 1', 'CSE Lab 2', 'IoT Lab', 'Classroom 301', 'HOD Cabin'].map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(), onChanged: (value) => setDialogState(() => selectedRoom = value!)),
                     const SizedBox(height: 16),
-                    _buildDialogDropdown(label: 'Assign to Sweeper', initialValue: selectedSweeper, items: const ['Kumar', 'Rajesh', 'Lakshmi'], onChanged: (value) => setDialogState(() => selectedSweeper = value!)),
+                    DropdownButtonFormField<String>(initialValue: selectedSweeper, decoration: InputDecoration(labelText: 'Assign Sweeper', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)), items: const ['Kumar', 'Rajesh', 'Lakshmi', 'Meena'].map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(), onChanged: (value) => setDialogState(() => selectedSweeper = value!)),
                     const SizedBox(height: 28),
                     Row(
                       children: [
                         Expanded(child: TextButton(onPressed: () => Navigator.pop(context), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: const Text('Cancel'))),
                         const SizedBox(width: 12),
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF3949AB), Color(0xFF5C6BC0)]), borderRadius: BorderRadius.circular(14)),
-                            child: ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _allDuties.insert(0, Duty(id: DateTime.now().toString(), roomName: selectedRoom, department: 'Assigned to: $selectedSweeper', status: DutyStatus.pending));
-                                });
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Duty assigned to $selectedSweeper successfully!'), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), margin: const EdgeInsets.all(16)));
-                              },
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                              child: const Text('Assign', style: TextStyle(fontWeight: FontWeight.w700)),
-                            ),
-                          ),
-                        ),
+                        Expanded(child: Container(decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF3949AB), Color(0xFF5C6BC0)]), borderRadius: BorderRadius.circular(14)), child: ElevatedButton(onPressed: () { setState(() { _allDuties.insert(0, Duty(id: DateTime.now().toString(), roomName: selectedRoom, department: 'Assigned to: $selectedSweeper', status: DutyStatus.pending)); }); Navigator.pop(context); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: const Text('Assign', style: TextStyle(fontWeight: FontWeight.w700))))),
                       ],
                     ),
                   ],
@@ -220,20 +153,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildDialogDropdown({required String label, required String initialValue, required List<String> items, required ValueChanged<String?> onChanged}) {
-    return DropdownButtonFormField<String>(
-      initialValue: initialValue,
-      decoration: InputDecoration(labelText: label, filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
-      items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
-      onChanged: onChanged,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     int pendingCount = _allDuties.where((d) => d.status == DutyStatus.pending).length;
     int completedCount = _allDuties.where((d) => d.status == DutyStatus.completed).length;
     int verifiedCount = _allDuties.where((d) => d.status == DutyStatus.verified).length;
+
+    // NEW: Logic to filter the duties list based on selected chip
+    List<Duty> filteredDuties = _allDuties.where((duty) {
+      if (_selectedFilter == 'All') return true;
+      if (_selectedFilter == 'Pending' && duty.status == DutyStatus.pending) return true;
+      if (_selectedFilter == 'Check' && duty.status == DutyStatus.completed) return true;
+      if (_selectedFilter == 'Verified' && duty.status == DutyStatus.verified) return true;
+      return false;
+    }).toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F8),
@@ -244,6 +177,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
       body: Column(
         children: [
+          // STAT CARDS
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             child: Row(
@@ -257,50 +191,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
           
-          // FACULTY ALLOTMENT CARD
+          // FACULTY & REPORT BUTTONS
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
             child: InkWell(
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const InchargeAllotmentScreen())),
               borderRadius: BorderRadius.circular(18),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFF3949AB).withValues(alpha: 0.15)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))]),
-                child: Row(
-                  children: [
-                    Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFF3949AB).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.manage_accounts_rounded, color: Color(0xFF3949AB))),
-                    const SizedBox(width: 16),
-                    const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Manage Faculty Incharge', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)), Text('Allot professors to verify rooms', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500))])),
-                    const Icon(Icons.chevron_right_rounded, color: Colors.grey),
-                  ],
-                ),
-              ),
+              child: Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFF3949AB).withValues(alpha: 0.15)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))]), child: Row(children: [Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFF3949AB).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.manage_accounts_rounded, color: Color(0xFF3949AB))), const SizedBox(width: 16), const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Manage Faculty Incharge', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)), Text('Allot professors to verify rooms', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500))])), const Icon(Icons.chevron_right_rounded, color: Colors.grey)])),
             ),
           ),
-
-          // --- NEW: GENERATE REPORTS CARD ---
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: InkWell(
               onTap: () => _showReportSelector(context),
               borderRadius: BorderRadius.circular(18),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFD32F2F).withValues(alpha: 0.2)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))]),
-                child: Row(
-                  children: [
-                    Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFD32F2F).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFD32F2F))),
-                    const SizedBox(width: 16),
-                    const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Generate PDF Reports', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)), Text('Download classroom & sweeper logs', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500))])),
-                    const Icon(Icons.file_download_rounded, color: Colors.grey),
-                  ],
-                ),
-              ),
+              child: Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFD32F2F).withValues(alpha: 0.2)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))]), child: Row(children: [Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFD32F2F).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFD32F2F))), const SizedBox(width: 16), const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Generate PDF Reports', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)), Text('Download classroom & sweeper logs', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500))])), const Icon(Icons.file_download_rounded, color: Colors.grey)])),
             ),
           ),
           
+          // PRESET CONTROLS
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
             child: Row(
               children: [
                 Text('ALL DUTIES', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1)),
@@ -311,15 +222,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ],
             ),
           ),
+
+          // --- NEW: FILTER CHIPS ---
+          SizedBox(
+            height: 50,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                _buildFilterChip('All'),
+                _buildFilterChip('Pending'),
+                _buildFilterChip('Check'),
+                _buildFilterChip('Verified'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
           
+          // DUTIES LIST (Now uses filteredDuties)
           Expanded(
-            child: _allDuties.isEmpty
-                ? const Center(child: Text('No duties assigned yet.'))
+            child: filteredDuties.isEmpty
+                ? const Center(child: Text('No duties found in this category.'))
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                    itemCount: _allDuties.length,
+                    itemCount: filteredDuties.length, // Updated
                     itemBuilder: (context, index) {
-                      final duty = _allDuties[index];
+                      final duty = filteredDuties[index]; // Updated
                       final color = _getStatusColor(duty.status);
                       return Container(
                         margin: const EdgeInsets.only(bottom: 10),
@@ -344,16 +272,36 @@ class _AdminDashboardState extends State<AdminDashboard> {
       floatingActionButton: _GradientFab(onPressed: _showAssignDutyDialog),
     );
   }
+
+  // Helper widget to build the modern Filter Chips
+  Widget _buildFilterChip(String label) {
+    final bool isSelected = _selectedFilter == label;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: FilterChip(
+        label: Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.grey.shade700)),
+        selected: isSelected,
+        onSelected: (bool selected) {
+          setState(() {
+            _selectedFilter = label;
+          });
+        },
+        backgroundColor: Colors.white,
+        selectedColor: const Color(0xFF3949AB),
+        checkmarkColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: isSelected ? Colors.transparent : Colors.grey.shade300)),
+      ),
+    );
+  }
 }
 
+// ... _StatCard and _GradientFab classes remain unchanged at the bottom ...
 class _StatCard extends StatelessWidget {
   final String title;
   final int count;
   final IconData icon;
   final List<Color> gradient;
-
   const _StatCard({required this.title, required this.count, required this.icon, required this.gradient});
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -376,7 +324,6 @@ class _StatCard extends StatelessWidget {
 class _GradientFab extends StatelessWidget {
   final VoidCallback onPressed;
   const _GradientFab({required this.onPressed});
-
   @override
   Widget build(BuildContext context) {
     return Container(
