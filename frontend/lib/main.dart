@@ -47,7 +47,7 @@ class CampusCleaningApp extends StatelessWidget {
           builders: {
             // This gives a beautiful, soft fade-up effect when changing screens
             TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
-            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.iOS: FadeUpwardsPageTransitionsBuilder(),
           },
         ),
       ),

@@ -11,7 +11,9 @@ class SweeperDashboard extends StatefulWidget {
 }
 
 class _SweeperDashboardState extends State<SweeperDashboard> {
-  // CSE-ONLY MOCK DATA
+  // NEW: Language Toggle State
+  bool _isTamil = false;
+
   final List<Duty> _assignedDuties = [
     Duty(id: '1', roomName: 'CSE Lab 1', department: 'CSE Dept'),
     Duty(id: '2', roomName: 'CSE Lab 2', department: 'CSE Dept'),
@@ -34,14 +36,14 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text(
-          'Room marked as completed. Waiting for verification.',
-          style: TextStyle(fontSize: 16),
+          _isTamil ? 'வேலை முடிந்தது. செக்கிங்கிற்கு காத்திருக்கிறது.' : 'Room marked as completed. Waiting for verification.',
+          style: const TextStyle(fontSize: 16),
         ),
-        backgroundColor: Color(0xFF2E7D32),
+        backgroundColor: const Color(0xFF2E7D32),
         behavior: SnackBarBehavior.floating,
-        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       ),
     );
   }
@@ -53,9 +55,7 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
   @override
   Widget build(BuildContext context) {
     final int totalDuties = _assignedDuties.length;
-    final int completedDuties = _assignedDuties
-        .where((d) => d.status == DutyStatus.completed || d.status == DutyStatus.verified)
-        .length;
+    final int completedDuties = _assignedDuties.where((d) => d.status == DutyStatus.completed || d.status == DutyStatus.verified).length;
     final double progress = totalDuties == 0 ? 0 : completedDuties / totalDuties;
 
     return Scaffold(
@@ -64,16 +64,34 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
         backgroundColor: const Color(0xFF1B5E20),
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'My Duties Today',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        title: Text(
+          _isTamil ? 'இன்றைய வேலைகள்' : 'My Duties Today',
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white), // Explicit color needed for Google Fonts override
         ),
         actions: [
+          // NEW: Language Toggle Button
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _isTamil = !_isTamil;
+              });
+            },
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.white.withValues(alpha: 0.15),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+            child: Text(
+              _isTamil ? 'EN' : 'தமிழ்',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
           IconButton(
-            iconSize: 30,
-            tooltip: 'Log out',
+            iconSize: 28,
+            tooltip: _isTamil ? 'வெளியேறு' : 'Log out',
             icon: const Icon(Icons.logout),
             onPressed: _logout,
+            color: Colors.white,
           ),
           const SizedBox(width: 8),
         ],
@@ -84,7 +102,7 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
           _buildProgressHeader(completedDuties, totalDuties, progress),
           Expanded(
             child: _assignedDuties.isEmpty
-                ? const _EmptyState()
+                ? _EmptyState(isTamil: _isTamil)
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                     itemCount: _assignedDuties.length,
@@ -93,6 +111,7 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
                       return RoomCard(
                         duty: duty,
                         onComplete: () => _markAsCompleted(duty.id),
+                        isTamil: _isTamil, // Pass the state to the card
                       );
                     },
                   ),
@@ -104,68 +123,44 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
 
   Widget _buildProgressHeader(int completed, int total, double progress) {
     final bool allDone = total > 0 && completed == total;
-    final String message = allDone
-        ? "🎉 Amazing! All rooms done!"
-        : completed == 0
-            ? "Let's get started!"
-            : "Great work — keep going!";
+    
+    // Translations for progress messages
+    final String message;
+    if (allDone) {
+      message = _isTamil ? "🎉 அருமை! எல்லாம் முடிந்தது!" : "🎉 Amazing! All rooms done!";
+    } else if (completed == 0) {
+      message = _isTamil ? "வேலையை தொடங்குவோம்!" : "Let's get started!";
+    } else {
+      message = _isTamil ? "சிறப்பு — தொடர்ந்து செய்யுங்கள்!" : "Great work — keep going!";
+    }
+
+    final String progressText = _isTamil ? '$completed / $total முடிந்தது' : '$completed of $total rooms done';
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
       decoration: BoxDecoration(
         color: const Color(0xFF1B5E20),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha:0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 12, offset: const Offset(0, 6))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            message,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text(message, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
           Row(
             children: [
               SizedBox(
-                width: 84,
-                height: 84,
+                width: 84, height: 84,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
                     TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: progress),
-                      duration: const Duration(milliseconds: 700),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, value, _) => CircularProgressIndicator(
-                        value: value,
-                        strokeWidth: 10,
-                        backgroundColor: Colors.white.withValues(alpha:0.25),
-                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFA5D6A7)),
-                      ),
+                      tween: Tween(begin: 0, end: progress), duration: const Duration(milliseconds: 700), curve: Curves.easeOutCubic,
+                      builder: (context, value, _) => CircularProgressIndicator(value: value, strokeWidth: 10, backgroundColor: Colors.white.withValues(alpha: 0.25), valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFA5D6A7))),
                     ),
-                    Text(
-                      '${(progress * 100).round()}%',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                    Text('${(progress * 100).round()}%', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
                   ],
                 ),
               ),
@@ -174,27 +169,13 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '$completed of $total rooms done',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    Text(progressText, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0, end: progress),
-                        duration: const Duration(milliseconds: 700),
-                        curve: Curves.easeOutCubic,
-                        builder: (context, value, _) => LinearProgressIndicator(
-                          value: value,
-                          minHeight: 14,
-                          backgroundColor: Colors.white.withValues(alpha:0.25),
-                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFA5D6A7)),
-                        ),
+                        tween: Tween(begin: 0, end: progress), duration: const Duration(milliseconds: 700), curve: Curves.easeOutCubic,
+                        builder: (context, value, _) => LinearProgressIndicator(value: value, minHeight: 14, backgroundColor: Colors.white.withValues(alpha: 0.25), valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFA5D6A7))),
                       ),
                     ),
                   ],
@@ -209,7 +190,8 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  final bool isTamil;
+  const _EmptyState({required this.isTamil});
 
   @override
   Widget build(BuildContext context) {
@@ -221,14 +203,14 @@ class _EmptyState extends StatelessWidget {
           children: [
             Icon(Icons.emoji_events_rounded, size: 96, color: Colors.amber.shade600),
             const SizedBox(height: 20),
-            const Text(
-              'No duties assigned yet.',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            Text(
+              isTamil ? 'இன்று வேலைகள் இல்லை.' : 'No duties assigned yet.',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              'Check back soon — your rooms will show up here.',
+              isTamil ? 'உங்கள் வேலைகள் இங்கே வரும்.' : 'Check back soon — your rooms will show up here.',
               style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
               textAlign: TextAlign.center,
             ),
