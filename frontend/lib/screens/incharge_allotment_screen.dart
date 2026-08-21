@@ -1,6 +1,7 @@
 // lib/screens/incharge_allotment_screen.dart
 import 'package:flutter/material.dart';
 import '../models/duty_model.dart';
+import '../services/api_service.dart';
 
 class InchargeAllotmentScreen extends StatefulWidget {
   const InchargeAllotmentScreen({super.key});
@@ -10,16 +11,52 @@ class InchargeAllotmentScreen extends StatefulWidget {
 }
 
 class _InchargeAllotmentScreenState extends State<InchargeAllotmentScreen> {
-  // MOCK DATA for Faculty Allotment
-  final List<Duty> _facultyDuties = [
-    Duty(id: '101', roomName: 'CSE Lab 1', department: 'Incharge: Prof. Suresh', status: DutyStatus.pending),
-    Duty(id: '102', roomName: 'IoT Lab', department: 'Incharge: Prof. Anita', status: DutyStatus.pending),
-    Duty(id: '103', roomName: 'Classroom 301', department: 'Incharge: Prof. Karthik', status: DutyStatus.pending),
-  ];
+  // --- STATE VARIABLES ---
+  List<Duty> _facultyDuties = [];
+  bool _isLoading = true;
 
-  List<Duty> _facultyPreset1 = [];
+  @override
+  void initState() {
+    super.initState();
+    _fetchAllotments();
+  }
+
+  // --- API FUNCTIONS ---
+  Future<void> _fetchAllotments() async {
+    setState(() => _isLoading = true);
+    try {
+      // NOTE: assumes ApiService.getAllDuties() returns Future<List<Duty>>.
+      // If your incharge list should be scoped to a department instead,
+      // swap this for ApiService.getDutiesByDepartment('CSE') as used
+      // elsewhere in the app.
+      final allDuties = await ApiService.getAllDuties();
+      if (!mounted) return;
+      setState(() {
+        _facultyDuties = allDuties;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Error fetching allotments: $e");
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Could not load allotments. Pull to refresh to retry.'),
+          backgroundColor: const Color(0xFFC62828),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+  }
 
   void _deleteAllotment(String id) {
+    // NOTE: your api_service.dart doesn't expose a delete endpoint yet
+    // (no DELETE /api/duties/{id} method), so this stays local-only for
+    // now, same as your original code — it won't persist across a refetch.
+    // Add a `deleteDuty(String id)` method to ApiService (backed by a
+    // DELETE route on the Spring Boot side) and I can wire this up to
+    // actually remove it from MongoDB too.
     setState(() => _facultyDuties.removeWhere((duty) => duty.id == id));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -32,62 +69,17 @@ class _InchargeAllotmentScreenState extends State<InchargeAllotmentScreen> {
     );
   }
 
-  void _savePreset() {
-    setState(() {
-      _facultyPreset1 = _facultyDuties.map((d) => Duty(
-        id: d.id, roomName: d.roomName, department: d.department, status: DutyStatus.pending,
-      )).toList();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Faculty Routine saved as Preset 1!'),
-        backgroundColor: const Color(0xFF3949AB),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-
-  void _loadPreset() {
-    if (_facultyPreset1.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('No preset saved yet.'),
-          backgroundColor: const Color(0xFFC62828),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-      return;
-    }
-    setState(() {
-      _facultyDuties.clear();
-      _facultyDuties.addAll(
-        _facultyPreset1.map((p) => Duty(
-          id: DateTime.now().microsecondsSinceEpoch.toString(),
-          roomName: p.roomName, department: p.department, status: DutyStatus.pending,
-        )).toList(),
-      );
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Faculty Preset 1 loaded!'),
-        backgroundColor: const Color(0xFF2E7D32),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-
   void _showAllotDialog() {
     String selectedRoom = 'CSE Lab 1';
     String selectedFaculty = 'Prof. Suresh';
+    bool isSubmitting = false;
+    final messenger = ScaffoldMessenger.of(context);
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (dialogContext, setDialogState) {
             return Dialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
               child: Padding(
@@ -106,37 +98,45 @@ class _InchargeAllotmentScreenState extends State<InchargeAllotmentScreen> {
                           child: const Icon(Icons.school_rounded, color: Colors.white),
                         ),
                         const SizedBox(width: 16),
-                        const Expanded(child: Text('Allot Incharge', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+                        const Expanded(
+                          child: Text('Allot Incharge', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 24),
                     DropdownButtonFormField<String>(
                       initialValue: selectedRoom,
                       decoration: InputDecoration(
-                        labelText: 'Select Room', filled: true, fillColor: const Color(0xFFF7F7FA),
+                        labelText: 'Select Room',
+                        filled: true,
+                        fillColor: const Color(0xFFF7F7FA),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                       ),
                       items: const ['CSE Lab 1', 'CSE Lab 2', 'IoT Lab', 'Classroom 301', 'HOD Cabin']
-                          .map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
-                      onChanged: (value) => setDialogState(() => selectedRoom = value!),
+                          .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                          .toList(),
+                      onChanged: isSubmitting ? null : (value) => setDialogState(() => selectedRoom = value!),
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       initialValue: selectedFaculty,
                       decoration: InputDecoration(
-                        labelText: 'Select Faculty', filled: true, fillColor: const Color(0xFFF7F7FA),
+                        labelText: 'Select Faculty',
+                        filled: true,
+                        fillColor: const Color(0xFFF7F7FA),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                       ),
                       items: const ['Prof. Suresh', 'Prof. Anita', 'Prof. Karthik', 'Prof. Meena']
-                          .map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
-                      onChanged: (value) => setDialogState(() => selectedFaculty = value!),
+                          .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                          .toList(),
+                      onChanged: isSubmitting ? null : (value) => setDialogState(() => selectedFaculty = value!),
                     ),
                     const SizedBox(height: 28),
                     Row(
                       children: [
                         Expanded(
                           child: TextButton(
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: isSubmitting ? null : () => Navigator.pop(dialogContext),
                             child: const Text('Cancel'),
                           ),
                         ),
@@ -144,22 +144,54 @@ class _InchargeAllotmentScreenState extends State<InchargeAllotmentScreen> {
                         Expanded(
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF6A1B9A), foregroundColor: Colors.white,
+                              backgroundColor: const Color(0xFF6A1B9A),
+                              foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                             ),
-                            onPressed: () {
-                              setState(() {
-                                _facultyDuties.insert(0, Duty(
-                                  id: DateTime.now().toString(),
-                                  roomName: selectedRoom,
-                                  department: 'Incharge: $selectedFaculty',
-                                  status: DutyStatus.pending,
-                                ));
-                              });
-                              Navigator.pop(context);
-                            },
-                            child: const Text('Allot', style: TextStyle(fontWeight: FontWeight.bold)),
+                            onPressed: isSubmitting
+                                ? null
+                                : () async {
+                                    setDialogState(() => isSubmitting = true);
+                                    try {
+                                      // ApiService.createDuty takes positional
+                                      // (roomName, department) — the backend
+                                      // defaults status to PENDING itself.
+                                      await ApiService.createDuty(
+                                        selectedRoom,
+                                        'Incharge: $selectedFaculty',
+                                      );
+                                      if (!dialogContext.mounted) return;
+                                      Navigator.pop(dialogContext);
+                                      await _fetchAllotments();
+                                      messenger.showSnackBar(
+                                        SnackBar(
+                                          content: Text('$selectedFaculty allotted to $selectedRoom.'),
+                                          backgroundColor: const Color(0xFF2E7D32),
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        ),
+                                      );
+                                    } catch (e) {
+                                      debugPrint("Allotment failed: $e");
+                                      setDialogState(() => isSubmitting = false);
+                                      messenger.showSnackBar(
+                                        SnackBar(
+                                          content: const Text('Could not allot faculty. Please try again.'),
+                                          backgroundColor: const Color(0xFFC62828),
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        ),
+                                      );
+                                    }
+                                  },
+                            child: isSubmitting
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                                  )
+                                : const Text('Allot', style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ],
@@ -184,67 +216,98 @@ class _InchargeAllotmentScreenState extends State<InchargeAllotmentScreen> {
         surfaceTintColor: Colors.transparent,
         title: const Text('Faculty Allotment', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black87, fontSize: 20)),
         iconTheme: const IconThemeData(color: Colors.black87),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: Row(
-              children: [
-                Text('INCHARGE LIST', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1)),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: _loadPreset, icon: const Icon(Icons.restore_rounded, size: 16), label: const Text('Load', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-                TextButton.icon(
-                  onPressed: _savePreset, icon: const Icon(Icons.save_rounded, size: 16), label: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Refresh',
+            onPressed: _isLoading ? null : _fetchAllotments,
           ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-              itemCount: _facultyDuties.length,
-              itemBuilder: (context, index) {
-                final duty = _facultyDuties[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white, borderRadius: BorderRadius.circular(18),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.04), blurRadius: 10, offset: const Offset(0, 3))],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 46, height: 46,
-                        decoration: BoxDecoration(color: Colors.purple.shade50, borderRadius: BorderRadius.circular(14)),
-                        child: Icon(Icons.school_rounded, color: Colors.purple.shade400, size: 22),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(duty.roomName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5)),
-                            const SizedBox(height: 2),
-                            Text(duty.department, style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade300, size: 22),
-                        onPressed: () => _deleteAllotment(duty.id),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
+          const SizedBox(width: 4),
         ],
       ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF6A1B9A)))
+          : RefreshIndicator(
+              onRefresh: _fetchAllotments,
+              color: const Color(0xFF6A1B9A),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                    child: Row(
+                      children: [
+                        Text(
+                          'INCHARGE LIST',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1),
+                        ),
+                        const Spacer(),
+                        Text('${_facultyDuties.length} total', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: _facultyDuties.isEmpty
+                        ? ListView(
+                            // ListView (not a bare Center) so RefreshIndicator's
+                            // pull-to-refresh still works on an empty list.
+                            children: [
+                              SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+                              Center(
+                                child: Text(
+                                  'No faculty allotted yet.\nTap "Allot Faculty" to add one.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
+                                ),
+                              ),
+                            ],
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                            itemCount: _facultyDuties.length,
+                            itemBuilder: (context, index) {
+                              final duty = _facultyDuties[index];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: [
+                                    BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 3)),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 46,
+                                      height: 46,
+                                      decoration: BoxDecoration(color: Colors.purple.shade50, borderRadius: BorderRadius.circular(14)),
+                                      child: Icon(Icons.school_rounded, color: Colors.purple.shade400, size: 22),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(duty.roomName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5)),
+                                          const SizedBox(height: 2),
+                                          Text(duty.department, style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade300, size: 22),
+                                      onPressed: () => _deleteAllotment(duty.id),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAllotDialog,
         backgroundColor: const Color(0xFF6A1B9A),

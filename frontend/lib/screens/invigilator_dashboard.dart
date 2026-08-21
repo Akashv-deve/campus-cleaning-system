@@ -27,6 +27,7 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
     try {
       // Fetch all CSE duties
       final allDuties = await ApiService.getDutiesByDepartment('CSE');
+      if (!mounted) return;
       setState(() {
         // The Faculty ONLY cares about rooms the Sweeper has marked as 'completed'
         _pendingVerifications = allDuties.where((d) => d.status == DutyStatus.completed).toList();
@@ -34,6 +35,7 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
       });
     } catch (e) {
       debugPrint("Error fetching verifications: $e");
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
@@ -41,11 +43,11 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
   Future<void> _verifyTask(String dutyId) async {
     // Optimistic UI update for a snappy feel
     setState(() => _pendingVerifications.removeWhere((duty) => duty.id == dutyId));
-    
+
     try {
       // Tell MongoDB it is verified!
       await ApiService.updateStatus(dutyId, DutyStatus.verified);
-      
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -59,77 +61,125 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
     } catch (e) {
       debugPrint("Verification failed: $e");
       // If it fails, refresh the list from the server
-      _fetchVerifications(); 
+      _fetchVerifications();
     }
   }
 
   void _rejectTask(String dutyId) {
     final reasonController = TextEditingController();
+    String? selectedReason; 
+    
+    final predefinedReasons = [
+      'Dust on windows/desks',
+      'Floor not mopped',
+      'Trash bin not emptied',
+      'Board not cleaned',
+      'Others...'
+    ];
 
     showDialog(
       context: context,
       builder: (context) {
-        // ... (Keep your exact same Dialog UI code here!) ...
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFFFEBEE), borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.close_rounded, color: Color(0xFFC62828))),
-                    const SizedBox(width: 14),
-                    const Expanded(child: Text('Reject Cleaning', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: reasonController,
-                  maxLines: 3,
-                  decoration: InputDecoration(hintText: 'e.g., Dust on windows', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none), contentPadding: const EdgeInsets.all(16)),
-                ),
-                const SizedBox(height: 22),
-                Row(
-                  children: [
-                    Expanded(child: TextButton(onPressed: () => Navigator.pop(context), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: const Text('Cancel'))),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          if (reasonController.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Reason is required to reject.'), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
-                            return;
-                          }
-                          Navigator.pop(context); // Close dialog immediately
-                          
-                          final reason = reasonController.text.trim();
-                          
-                          // Optimistic UI removal
-                          setState(() => _pendingVerifications.removeWhere((duty) => duty.id == dutyId));
-                          
-                          try {
-                            // Tell MongoDB it is rejected and pass the reason!
-                            await ApiService.updateStatus(dutyId, DutyStatus.rejected, rejectionReason: reason);
-                            
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Task Rejected. Sweeper notified.'), backgroundColor: const Color(0xFFC62828), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), margin: const EdgeInsets.all(16)));
-                          } catch (e) {
-                            debugPrint("Rejection failed: $e");
-                            _fetchVerifications();
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFC62828), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                        child: const Text('Submit'),
+                    Row(
+                      children: [
+                        Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFFFEBEE), borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.close_rounded, color: Color(0xFFC62828))),
+                        const SizedBox(width: 14),
+                        const Expanded(child: Text('Reject Cleaning', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    
+                    // THE NEW CHOICE CHIPS
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      children: predefinedReasons.map((reason) {
+                        final isSelected = selectedReason == reason;
+                        return ChoiceChip(
+                          label: Text(
+                            reason, 
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.black87, 
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
+                            )
+                          ),
+                          selected: isSelected,
+                          selectedColor: const Color(0xFFC62828),
+                          backgroundColor: const Color(0xFFF7F7FA),
+                          showCheckmark: false,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: isSelected ? Colors.transparent : Colors.grey.shade300)),
+                          onSelected: (selected) {
+                            setDialogState(() {
+                              selectedReason = selected ? reason : null;
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    
+                    // Show text box ONLY if 'Others...' is clicked
+                    if (selectedReason == 'Others...') ...[
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: reasonController,
+                        maxLines: 2,
+                        decoration: InputDecoration(hintText: 'Type custom reason...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none), contentPadding: const EdgeInsets.all(16)),
                       ),
+                    ],
+
+                    const SizedBox(height: 22),
+                    Row(
+                      children: [
+                        Expanded(child: TextButton(onPressed: () => Navigator.pop(context), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: const Text('Cancel'))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              String finalReason = '';
+                              if (selectedReason == 'Others...') {
+                                finalReason = reasonController.text.trim();
+                              } else {
+                                finalReason = selectedReason ?? '';
+                              }
+
+                              if (finalReason.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Please select or type a reason.'), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
+                                return;
+                              }
+                              
+                              Navigator.pop(context); 
+                              setState(() => _pendingVerifications.removeWhere((duty) => duty.id == dutyId));
+                              
+                              try {
+                                await ApiService.updateStatus(dutyId, DutyStatus.rejected, rejectionReason: finalReason);
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Task Rejected. Sweeper notified.'), backgroundColor: const Color(0xFFC62828), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), margin: const EdgeInsets.all(16)));
+                              } catch (e) {
+                                debugPrint("Rejection failed: $e");
+                                _fetchVerifications();
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFC62828), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                            child: const Text('Submit'),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -159,29 +209,29 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
           const SizedBox(width: 4),
         ],
       ),
-      body: _isLoading 
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF3949AB)))
           : AnimatedSwitcher(
-        duration: const Duration(milliseconds: 350),
-        child: _pendingVerifications.isEmpty
-            ? const _AllCaughtUpState(key: ValueKey('empty'))
-            : ListView.builder(
-                key: const ValueKey('list'),
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                itemCount: _pendingVerifications.length,
-                itemBuilder: (context, index) {
-                  final duty = _pendingVerifications[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: VerificationCard(
-                      duty: duty,
-                      onVerify: () => _verifyTask(duty.id),
-                      onReject: () => _rejectTask(duty.id),
+              duration: const Duration(milliseconds: 350),
+              child: _pendingVerifications.isEmpty
+                  ? const _AllCaughtUpState(key: ValueKey('empty'))
+                  : ListView.builder(
+                      key: const ValueKey('list'),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      itemCount: _pendingVerifications.length,
+                      itemBuilder: (context, index) {
+                        final duty = _pendingVerifications[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: VerificationCard(
+                            duty: duty,
+                            onVerify: () => _verifyTask(duty.id),
+                            onReject: () => _rejectTask(duty.id),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
-      ),
+            ),
     );
   }
 }
@@ -214,7 +264,7 @@ class _AllCaughtUpState extends StatelessWidget {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.green.withValues(alpha:0.25),
+                      color: Colors.green.withValues(alpha: 0.25),
                       blurRadius: 24,
                       offset: const Offset(0, 10),
                     ),

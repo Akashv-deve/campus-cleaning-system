@@ -77,6 +77,12 @@ class ApiService {
       throw Exception('Error fetching all duties: $e');
     }
   }
+  static Future<void> deleteDuty(String dutyId) async {
+  final response = await http.delete(Uri.parse('$baseUrl/$dutyId'));
+  if (response.statusCode != 200 && response.statusCode != 204) {
+    throw Exception('Failed to delete duty');
+  }
+}
 
   // --- Helper method to convert JSON from Spring Boot into your Dart Object ---
   static Duty _fromJson(Map<String, dynamic> json) {
