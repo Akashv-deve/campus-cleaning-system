@@ -11,17 +11,33 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  // NEW: State variable for the active filter
   String _selectedFilter = 'All';
-
-  final List<Duty> _allDuties = [
-    Duty(id: '1', roomName: 'CSE Lab 1', department: 'Assigned to: Kumar', status: DutyStatus.verified),
-    Duty(id: '2', roomName: 'IoT Lab', department: 'Assigned to: Rajesh', status: DutyStatus.completed),
-    Duty(id: '3', roomName: 'Classroom 301', department: 'Assigned to: Lakshmi', status: DutyStatus.pending),
-    Duty(id: '4', roomName: 'HOD Cabin', department: 'Assigned to: Meena', status: DutyStatus.pending),
-  ];
-
+  
+  // --- STATE VARIABLES ---
+  List<Duty> _allDuties = []; // Now starts empty!
+  bool _isLoading = true;
   List<Duty> _dutyPreset1 = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDuties();
+  }
+
+  // --- API FUNCTIONS ---
+  Future<void> _fetchDuties() async {
+    try {
+      final fetchedDuties = await ApiService.getAllDuties();
+      setState(() {
+        // Reverse so the newest duties appear at the top of the list
+        _allDuties = fetchedDuties.reversed.toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      print("Error fetching duties: $e");
+      setState(() => _isLoading = false);
+    }
+  }
 
   void _logout() {
     Navigator.pushReplacementNamed(context, '/');
@@ -36,8 +52,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  // --- PRESET & DELETE FUNCTIONS (Same as before) ---
+  // --- PRESET & DELETE FUNCTIONS ---
   void _deleteDuty(String dutyId) {
+    // Note: This only deletes locally for now until we add a backend delete route!
     setState(() => _allDuties.removeWhere((duty) => duty.id == dutyId));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: const Row(children: [Icon(Icons.delete_outline_rounded, color: Colors.white), SizedBox(width: 10), Text('Duty removed successfully.')]), backgroundColor: const Color(0xFFC62828), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 2)),
@@ -63,7 +80,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Row(children: [Icon(Icons.restore_rounded, color: Colors.white), SizedBox(width: 10), Text('Duty Preset 1 loaded successfully!')]), backgroundColor: const Color(0xFF2E7D32), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
   }
 
-  // --- PDF REPORT FUNCTION (Same as before) ---
+  // --- PDF REPORT FUNCTION ---
   void _showReportSelector(BuildContext context) {
     showModalBottomSheet(
       context: context, backgroundColor: Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
@@ -113,7 +130,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Row(children: [Icon(Icons.check_circle_rounded, color: Colors.white), SizedBox(width: 12), Text('PDF Saved to Downloads Folder!')]), backgroundColor: const Color(0xFF2E7D32), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 3)));
   }
 
-  // --- ASSIGN DIALOG (Same as before) ---
+  // --- LIVE ASSIGN DIALOG ---
   void _showAssignDutyDialog() {
     String selectedRoom = 'CSE Lab 1';
     String selectedSweeper = 'Kumar';
@@ -140,7 +157,33 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       children: [
                         Expanded(child: TextButton(onPressed: () => Navigator.pop(context), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: const Text('Cancel'))),
                         const SizedBox(width: 12),
-                        Expanded(child: Container(decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF3949AB), Color(0xFF5C6BC0)]), borderRadius: BorderRadius.circular(14)), child: ElevatedButton(onPressed: () { setState(() { _allDuties.insert(0, Duty(id: DateTime.now().toString(), roomName: selectedRoom, department: 'Assigned to: $selectedSweeper', status: DutyStatus.pending)); }); Navigator.pop(context); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: const Text('Assign', style: TextStyle(fontWeight: FontWeight.w700))))),
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF3949AB), Color(0xFF5C6BC0)]), borderRadius: BorderRadius.circular(14)),
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                              onPressed: () async {
+                                // Close the dialog immediately for a snappy feel
+                                Navigator.pop(context);
+                                
+                                // Show loading spinner in the main UI
+                                setState(() => _isLoading = true);
+                                
+                                try {
+                                  // 1. Send it to MongoDB!
+                                  await ApiService.createDuty(selectedRoom, 'CSE');
+                                  
+                                  // 2. Fetch the updated list so it includes the real MongoDB ID
+                                  await _fetchDuties();
+                                } catch (e) {
+                                  print("Creation failed: $e");
+                                  setState(() => _isLoading = false);
+                                }
+                              },
+                              child: const Text('Assign', style: TextStyle(fontWeight: FontWeight.w700)),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -152,6 +195,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       },
     );
   }
+
+// ... Keep your existing @override Widget build(BuildContext context) ...
 
   @override
   Widget build(BuildContext context) {
@@ -241,9 +286,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
           
           // DUTIES LIST (Now uses filteredDuties)
           Expanded(
-            child: filteredDuties.isEmpty
-                ? const Center(child: Text('No duties found in this category.'))
-                : ListView.builder(
+            child: _isLoading 
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFF3949AB)))
+                : filteredDuties.isEmpty
+                    ? const Center(child: Text('No duties found in this category.'))
+                    : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                     itemCount: filteredDuties.length, // Updated
                     itemBuilder: (context, index) {
