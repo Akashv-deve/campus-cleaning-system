@@ -7,7 +7,7 @@ import '../models/duty_model.dart';
 class LogReportScreen extends StatefulWidget {
   final List<Duty> duties;
   final String reportTitle;
-  final String reportType; // 'sweeper' or 'classroom'
+  final String reportType; 
 
   const LogReportScreen({
     super.key, 
@@ -30,7 +30,6 @@ class _LogReportScreenState extends State<LogReportScreen> {
     _generateFilterOptions();
   }
 
-  // Automatically finds every custom name in the database for the dropdown
   void _generateFilterOptions() {
     Set<String> uniqueNames = {};
     for (var duty in widget.duties) {
@@ -45,7 +44,6 @@ class _LogReportScreenState extends State<LogReportScreen> {
     });
   }
 
-  // Filters the list so you can view an individual page
   List<Duty> get _filteredDuties {
     List<Duty> filtered = List.from(widget.duties);
     if (_selectedEntity != 'All') {
@@ -56,7 +54,6 @@ class _LogReportScreenState extends State<LogReportScreen> {
       }
     }
     
-    // Sort the final result
     if (widget.reportType == 'sweeper') {
       filtered.sort((a, b) => (a.sweeperName ?? 'z').compareTo(b.sweeperName ?? 'z'));
     } else {
@@ -71,10 +68,20 @@ class _LogReportScreenState extends State<LogReportScreen> {
     return "${now.day}/${now.month}/${now.year} at ${now.hour}:$minute";
   }
 
+  // Helper method to format the status text
+  String _formatStatus(Duty duty) {
+    if (duty.status == DutyStatus.verified) {
+      return 'VERIFIED at ${duty.verifiedTime ?? ""}';
+    } else if (duty.status == DutyStatus.completed) {
+      return 'COMPLETED (Under Verification)';
+    }
+    return duty.status.name.toUpperCase();
+  }
+
   Future<void> _generateAndPrintPdf(BuildContext context) async {
     final doc = pw.Document();
     final timestamp = _getCurrentDateTime();
-    final dataList = _filteredDuties; // Only prints the filtered individual!
+    final dataList = _filteredDuties; 
 
     doc.addPage(
       pw.Page(
@@ -105,12 +112,12 @@ class _LogReportScreenState extends State<LogReportScreen> {
                       ? [
                           duty.sweeperName?.toUpperCase() ?? 'UNASSIGNED',
                           duty.roomName,
-                          duty.status == DutyStatus.verified ? 'Done at ${duty.completedTime ?? ""}' : duty.status.name.toUpperCase(),
+                          _formatStatus(duty),
                           duty.facultyName?.replaceAll('Incharge: ', '') ?? 'N/A'
                         ]
                       : [
                           duty.roomName,
-                          duty.status == DutyStatus.verified ? 'Verified at ${duty.verifiedTime ?? ""}' : duty.status.name.toUpperCase(),
+                          _formatStatus(duty),
                           duty.sweeperName?.toUpperCase() ?? 'UNASSIGNED',
                           duty.facultyName?.replaceAll('Incharge: ', '') ?? 'N/A'
                         ]),
@@ -142,7 +149,6 @@ class _LogReportScreenState extends State<LogReportScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // THE INDIVIDUAL FILTER DROPDOWN
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             color: Colors.white,
@@ -199,7 +205,10 @@ class _LogReportScreenState extends State<LogReportScreen> {
                           ),
                         ],
                       ),
-                      Text(duty.status.name.toUpperCase(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: duty.status == DutyStatus.verified ? Colors.green : Colors.orange)),
+                      Text(
+                        duty.status == DutyStatus.completed ? 'VERIFYING...' : duty.status.name.toUpperCase(), 
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: duty.status == DutyStatus.verified ? Colors.green : Colors.orange)
+                      ),
                     ],
                   ),
                 );

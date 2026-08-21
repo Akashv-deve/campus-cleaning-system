@@ -60,20 +60,39 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   // --- UPGRADED: EDIT BOTH ASSIGNMENTS DIALOG ---
   void _showEditAssignmentDialog(Duty duty) {
-    // Dynamically build lists so custom names from DB don't crash the dropdown
-    String currentSweeper = duty.sweeperName?.toLowerCase() ?? 'kumar';
-    List<String> sweeperOptions = ['kumar', 'rajesh', 'lakshmi', 'meena'];
-    if (!sweeperOptions.contains(currentSweeper) && currentSweeper != 'unassigned') sweeperOptions.insert(0, currentSweeper);
-    sweeperOptions.add('Add New Sweeper...');
+    List<String> sweeperOptions = _allDuties.map((d) => d.sweeperName?.toLowerCase() ?? '').where((s) => s.isNotEmpty && s != 'unassigned').toSet().toList();
+    if (sweeperOptions.isEmpty) {
+      sweeperOptions = ['Add New Sweeper...'];
+    } else {
+      sweeperOptions.add('Add New Sweeper...');
+    }
+    
+    List<String> facultyOptions = _allDuties.map((d) => d.facultyName?.replaceAll('Incharge: ', '') ?? '').where((f) => f.isNotEmpty && f != 'Unassigned').toSet().toList();
+    if (facultyOptions.isEmpty) {
+      facultyOptions = ['Add New Faculty...'];
+    } else {
+      facultyOptions.add('Add New Faculty...');
+    }
 
-    String currentFac = duty.facultyName?.replaceAll('Incharge: ', '') ?? 'Prof. Suresh';
-    List<String> facultyOptions = ['Prof. Suresh', 'Prof. Anita', 'Prof. Karthik', 'Prof. Meena'];
-    if (!facultyOptions.contains(currentFac) && currentFac != 'Unassigned') facultyOptions.insert(0, currentFac);
-    facultyOptions.add('Add New Faculty...');
+    String currentSweeper = duty.sweeperName?.toLowerCase() ?? '';
+    if (!sweeperOptions.contains(currentSweeper) && currentSweeper.isNotEmpty) {
+      sweeperOptions.insert(0, currentSweeper);
+    }
+    if (currentSweeper.isEmpty || currentSweeper == 'unassigned') {
+      currentSweeper = sweeperOptions.first;
+    }
 
-    bool isCustomSweeper = false;
+    String currentFac = duty.facultyName?.replaceAll('Incharge: ', '') ?? '';
+    if (!facultyOptions.contains(currentFac) && currentFac.isNotEmpty) {
+      facultyOptions.insert(0, currentFac);
+    }
+    if (currentFac.isEmpty || currentFac == 'Unassigned') {
+      currentFac = facultyOptions.first;
+    }
+
+    bool isCustomSweeper = currentSweeper == 'Add New Sweeper...';
     final customSweeperController = TextEditingController();
-    bool isCustomFaculty = false;
+    bool isCustomFaculty = currentFac == 'Add New Faculty...';
     final customFacultyController = TextEditingController();
     
     showDialog(
@@ -92,15 +111,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       const Text('Edit Assignment', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 24),
                       
-                      // SWEEPER DROPDOWN
                       DropdownButtonFormField<String>(
                         initialValue: currentSweeper,
                         decoration: InputDecoration(labelText: 'Reassign Sweeper', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)),
                         items: sweeperOptions.map((item) => DropdownMenuItem(value: item, child: Text(item.toUpperCase()))).toList(),
                         onChanged: (value) {
                           setDialogState(() {
-                            if (value == 'Add New Sweeper...') { isCustomSweeper = true; } 
-                            else { isCustomSweeper = false; currentSweeper = value!; }
+                            if (value == 'Add New Sweeper...') {
+                              isCustomSweeper = true;
+                            } else {
+                              isCustomSweeper = false;
+                              currentSweeper = value!;
+                            }
                           });
                         },
                       ),
@@ -110,21 +132,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ],
                       
                       const SizedBox(height: 16),
-                      // FACULTY DROPDOWN
                       DropdownButtonFormField<String>(
                         initialValue: currentFac,
                         decoration: InputDecoration(labelText: 'Reassign Faculty', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)),
                         items: facultyOptions.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
                         onChanged: (value) {
                           setDialogState(() {
-                            if (value == 'Add New Faculty...') { isCustomFaculty = true; } 
-                            else { isCustomFaculty = false; currentFac = value!; }
+                            if (value == 'Add New Faculty...') {
+                              isCustomFaculty = true;
+                            } else {
+                              isCustomFaculty = false;
+                              currentFac = value!;
+                            }
                           });
                         },
                       ),
                       if (isCustomFaculty) ...[
                         const SizedBox(height: 12),
-                        TextField(controller: customFacultyController, decoration: InputDecoration(hintText: 'e.g., Prof. Rajesh', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
+                        TextField(controller: customFacultyController, decoration: InputDecoration(hintText: 'Type faculty name...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
                       ],
 
                       const SizedBox(height: 28),
@@ -167,16 +192,37 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   // --- UPGRADED: ASSIGN DUTY DIALOG ---
   void _showAssignDutyDialog() {
-    String selectedRoom = 'CSE Lab 1';
-    bool isCustomRoom = false;
+    List<String> roomOptions = _allDuties.map((d) => d.roomName).toSet().toList();
+    if (roomOptions.isEmpty) {
+      roomOptions = ['Add New Room...'];
+    } else {
+      roomOptions.add('Add New Room...');
+    }
+
+    List<String> sweeperOptions = _allDuties.map((d) => d.sweeperName?.toLowerCase() ?? '').where((s) => s.isNotEmpty && s != 'unassigned').toSet().toList();
+    if (sweeperOptions.isEmpty) {
+      sweeperOptions = ['Add New Sweeper...'];
+    } else {
+      sweeperOptions.add('Add New Sweeper...');
+    }
+
+    List<String> facultyOptions = _allDuties.map((d) => d.facultyName?.replaceAll('Incharge: ', '') ?? '').where((f) => f.isNotEmpty && f != 'Unassigned').toSet().toList();
+    if (facultyOptions.isEmpty) {
+      facultyOptions = ['Add New Faculty...'];
+    } else {
+      facultyOptions.add('Add New Faculty...');
+    }
+
+    String selectedRoom = roomOptions.first;
+    bool isCustomRoom = selectedRoom == 'Add New Room...';
     final customRoomController = TextEditingController();
     
-    String selectedSweeper = 'kumar';
-    bool isCustomSweeper = false;
+    String selectedSweeper = sweeperOptions.first;
+    bool isCustomSweeper = selectedSweeper == 'Add New Sweeper...';
     final customSweeperController = TextEditingController();
     
-    String selectedFaculty = 'Prof. Suresh';
-    bool isCustomFaculty = false;
+    String selectedFaculty = facultyOptions.first;
+    bool isCustomFaculty = selectedFaculty == 'Add New Faculty...';
     final customFacultyController = TextEditingController();
 
     showDialog(
@@ -196,15 +242,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       const Row(children: [Icon(Icons.add_task_rounded, color: Color(0xFF3949AB), size: 28), SizedBox(width: 12), Text('Assign New Duty', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))]),
                       const SizedBox(height: 24),
                       
-                      // ROOM
                       DropdownButtonFormField<String>(
                         initialValue: selectedRoom,
                         decoration: InputDecoration(labelText: 'Select Room', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)),
-                        items: const ['CSE Lab 1', 'CSE Lab 2', 'IoT Lab', 'Classroom 301', 'HOD Cabin', 'Add New Room...'].map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
+                        items: roomOptions.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
                         onChanged: (value) {
                           setDialogState(() {
-                            if (value == 'Add New Room...') { isCustomRoom = true; } 
-                            else { isCustomRoom = false; selectedRoom = value!; }
+                            if (value == 'Add New Room...') {
+                              isCustomRoom = true;
+                            } else {
+                              isCustomRoom = false;
+                              selectedRoom = value!;
+                            }
                           });
                         },
                       ),
@@ -214,15 +263,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ],
 
                       const SizedBox(height: 16),
-                      // SWEEPER
                       DropdownButtonFormField<String>(
                         initialValue: selectedSweeper, 
                         decoration: InputDecoration(labelText: 'Assign Sweeper', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), 
-                        items: const ['kumar', 'rajesh', 'lakshmi', 'meena', 'Add New Sweeper...'].map((item) => DropdownMenuItem(value: item, child: Text(item.toUpperCase()))).toList(), 
+                        items: sweeperOptions.map((item) => DropdownMenuItem(value: item, child: Text(item.toUpperCase()))).toList(), 
                         onChanged: (value) {
                           setDialogState(() {
-                            if (value == 'Add New Sweeper...') { isCustomSweeper = true; } 
-                            else { isCustomSweeper = false; selectedSweeper = value!; }
+                            if (value == 'Add New Sweeper...') {
+                              isCustomSweeper = true;
+                            } else {
+                              isCustomSweeper = false;
+                              selectedSweeper = value!;
+                            }
                           });
                         },
                       ),
@@ -232,21 +284,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ],
                       
                       const SizedBox(height: 16),
-                      // FACULTY
                       DropdownButtonFormField<String>(
                         initialValue: selectedFaculty, 
                         decoration: InputDecoration(labelText: 'Assign Faculty', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), 
-                        items: const ['Prof. Suresh', 'Prof. Anita', 'Prof. Karthik', 'Prof. Meena', 'Add New Faculty...'].map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(), 
+                        items: facultyOptions.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(), 
                         onChanged: (value) {
                           setDialogState(() {
-                            if (value == 'Add New Faculty...') { isCustomFaculty = true; } 
-                            else { isCustomFaculty = false; selectedFaculty = value!; }
+                            if (value == 'Add New Faculty...') {
+                              isCustomFaculty = true;
+                            } else {
+                              isCustomFaculty = false;
+                              selectedFaculty = value!;
+                            }
                           });
                         }
                       ),
                       if (isCustomFaculty) ...[
                         const SizedBox(height: 12),
-                        TextField(controller: customFacultyController, decoration: InputDecoration(hintText: 'e.g., Prof. Rajesh', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
+                        TextField(controller: customFacultyController, decoration: InputDecoration(hintText: 'Type faculty name...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
                       ],
 
                       const SizedBox(height: 28),

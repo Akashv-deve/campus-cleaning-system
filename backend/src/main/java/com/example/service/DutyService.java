@@ -39,15 +39,18 @@ public class DutyService {
         duty.setStatus(status);
         duty.setRejectionReason(rejectionReason);
         
-        // Save the exact time based on the action
-        if (status == DutyStatus.COMPLETED) {
-            duty.setCompletedTime(timestamp);
-        } else if (status == DutyStatus.VERIFIED) {
-            duty.setVerifiedTime(timestamp);
-        } else if (status == DutyStatus.PENDING || status == DutyStatus.REJECTED) {
-            // Reset times if it's sent back to the start
-            duty.setCompletedTime(null);
-            duty.setVerifiedTime(null);
+        switch (status) {
+            case COMPLETED:
+                duty.setCompletedTime(timestamp);
+                break;
+            case VERIFIED:
+                duty.setVerifiedTime(timestamp);
+                break;
+            case PENDING:
+            case REJECTED:
+                duty.setCompletedTime(null);
+                duty.setVerifiedTime(null);
+                break;
         }
         
         return dutyRepository.save(duty);
