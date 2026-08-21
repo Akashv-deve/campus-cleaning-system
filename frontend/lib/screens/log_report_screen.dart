@@ -62,12 +62,12 @@ class LogReportScreen extends StatelessWidget {
                       ? [
                           duty.sweeperName?.toUpperCase() ?? 'UNASSIGNED',
                           duty.roomName,
-                          duty.status.name.toUpperCase(),
+                          duty.status == DutyStatus.verified ? 'Done at ${duty.completedTime}' : duty.status.name.toUpperCase(),
                           duty.facultyName?.replaceAll('Incharge: ', '') ?? 'N/A'
                         ]
                       : [
                           duty.roomName,
-                          duty.status.name.toUpperCase(),
+                          duty.status == DutyStatus.verified ? 'Verified at ${duty.verifiedTime}' : duty.status.name.toUpperCase(),
                           duty.sweeperName?.toUpperCase() ?? 'UNASSIGNED',
                           duty.facultyName?.replaceAll('Incharge: ', '') ?? 'N/A'
                         ]),
@@ -127,8 +127,10 @@ class LogReportScreen extends StatelessWidget {
                         children: [
                           // Highlight Sweeper OR Room based on the report type
                           Text(
-                            reportType == 'sweeper' ? (duty.sweeperName?.toUpperCase() ?? 'UNASSIGNED') : duty.roomName, 
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
+                            reportType == 'sweeper' 
+                                ? 'Room: ${duty.roomName} • Completed: ${duty.completedTime ?? "Pending"}'
+                                : 'Sweeper: ${duty.sweeperName?.toUpperCase() ?? "N/A"} • Verified: ${duty.verifiedTime ?? "Pending"}', 
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 13)
                           ),
                           const SizedBox(height: 4),
                           Text(

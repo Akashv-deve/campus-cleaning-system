@@ -32,19 +32,24 @@ public class DutyService {
     }
 
     // 4. Update the status of a duty (Completed, Verified, Rejected)
-    public Duty updateDutyStatus(String id, DutyStatus newStatus, String rejectionReason) {
+    public Duty updateDutyStatus(String id, DutyStatus status, String rejectionReason, String timestamp) {
         Duty duty = dutyRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Duty not found with ID: " + id));
-
-        duty.setStatus(newStatus);
+                .orElseThrow(() -> new RuntimeException("Duty not found"));
         
-        // If rejected, save the reason. If not, clear any old reasons.
-        if (newStatus == DutyStatus.REJECTED) {
-            duty.setRejectionReason(rejectionReason);
-        } else {
-            duty.setRejectionReason(null); 
+        duty.setStatus(status);
+        duty.setRejectionReason(rejectionReason);
+        
+        // Save the exact time based on the action
+        if (status == DutyStatus.COMPLETED) {
+            duty.setCompletedTime(timestamp);
+        } else if (status == DutyStatus.VERIFIED) {
+            duty.setVerifiedTime(timestamp);
+        } else if (status == DutyStatus.PENDING || status == DutyStatus.REJECTED) {
+            // Reset times if it's sent back to the start
+            duty.setCompletedTime(null);
+            duty.setVerifiedTime(null);
         }
-
+        
         return dutyRepository.save(duty);
     }
     public Duty allotFaculty(String id, String facultyName) {

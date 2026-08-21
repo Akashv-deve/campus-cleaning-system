@@ -24,15 +24,28 @@ class ApiService {
   }
 
   // 2. Update a duty status
-  static Future<void> updateStatus(String dutyId, DutyStatus newStatus, {String? rejectionReason}) async {
+  static Future<void> updateStatus(String dutyId, DutyStatus status, {String? rejectionReason}) async {
     try {
+      // Get exact device hardware time
+      final now = DateTime.now();
+      int hour = now.hour;
+      final amPm = hour >= 12 ? 'PM' : 'AM';
+      if (hour > 12) hour -= 12;
+      if (hour == 0) hour = 12;
+      final minute = now.minute.toString().padLeft(2, '0');
+      final timeString = "${now.day}/${now.month}, $hour:$minute $amPm";
+
+      final body = {
+        'status': status.name, // <-- Automatically converts enum to string!
+        'timestamp': timeString, // <-- Sends the phone's hardware time!
+      };
+      
+      if (rejectionReason != null) body['rejectionReason'] = rejectionReason;
+
       final response = await http.patch(
         Uri.parse('$baseUrl/$dutyId/status'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'status': newStatus.name, // Sends 'completed', 'verified', etc.
-          'rejectionReason': rejectionReason,
-        }),
+        body: jsonEncode(body),
       );
 
       if (response.statusCode != 200) {

@@ -31,9 +31,10 @@ public class DutyController {
             @RequestBody Map<String, String> requestBody) {
         
         DutyStatus newStatus = DutyStatus.valueOf(requestBody.get("status").toUpperCase());
-        String rejectionReason = requestBody.get("rejectionReason"); // Will be null unless rejected
+        String rejectionReason = requestBody.get("rejectionReason"); 
+        String timestamp = requestBody.get("timestamp"); // Catch the phone's time!
         
-        Duty updatedDuty = dutyService.updateDutyStatus(id, newStatus, rejectionReason);
+        Duty updatedDuty = dutyService.updateDutyStatus(id, newStatus, rejectionReason, timestamp);
         return ResponseEntity.ok(updatedDuty);
     }
     

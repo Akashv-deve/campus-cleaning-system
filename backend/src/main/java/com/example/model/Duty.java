@@ -27,4 +27,6 @@ public class Duty {
     private String rejectionReason;
     private String sweeperName;
     private String facultyName;
+    private String completedTime;
+    private String verifiedTime;
 }

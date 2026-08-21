@@ -7,9 +7,12 @@ class Duty {
   DutyStatus status;
   final String? rejectionReason;
   
-  // NEW: Real role-based tracking
   final String? sweeperName;
   final String? facultyName;
+  
+  // NEW: Time tracking variables
+  final String? completedTime;
+  final String? verifiedTime;
 
   Duty({
     required this.id,
@@ -19,6 +22,8 @@ class Duty {
     this.rejectionReason,
     this.sweeperName,
     this.facultyName,
+    this.completedTime,
+    this.verifiedTime,
   });
 
   factory Duty.fromJson(Map<String, dynamic> json) {
@@ -29,6 +34,8 @@ class Duty {
       rejectionReason: json['rejectionReason'],
       sweeperName: json['sweeperName'],
       facultyName: json['facultyName'],
+      completedTime: json['completedTime'],
+      verifiedTime: json['verifiedTime'],
       status: DutyStatus.values.firstWhere(
         (e) => e.name.toLowerCase() == json['status'].toString().toLowerCase(),
         orElse: () => DutyStatus.pending,
