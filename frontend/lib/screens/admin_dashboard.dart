@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/duty_model.dart';
 import '../services/api_service.dart';
 import 'log_report_screen.dart';
+import 'package:shimmer/shimmer.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -578,6 +579,46 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  // --- PREMIUM UX: SHIMMER LOADING EFFECT ---
+  Widget _buildShimmerLoading() {
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+      itemCount: 6, // Displays 6 animated skeleton cards
+      itemBuilder: (context, index) {
+        return Shimmer.fromColors(
+          baseColor: Colors.grey.shade300,
+          highlightColor: Colors.grey.shade100,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white, 
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(
+              children: [
+                Container(width: 46, height: 46, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14))),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(width: 180, height: 16, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+                      const SizedBox(height: 8),
+                      Container(width: 120, height: 12, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Container(width: 60, height: 26, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20))),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     int pendingCount = _allDuties.where((d) => d.status == DutyStatus.pending).length;
@@ -640,40 +681,52 @@ class _AdminDashboardState extends State<AdminDashboard> {
           
           Expanded(
             child: _isLoading 
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF3949AB)))
-                : filteredDuties.isEmpty
-                    ? const Center(child: Text('No duties found.'))
-                    : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                    itemCount: filteredDuties.length, 
-                    itemBuilder: (context, index) {
-                      final duty = filteredDuties[index]; 
-                      final color = _getStatusColor(duty.status);
-                      
-                      // Safely cleans up any old database records for the UI view
-                      String cleanIncharge = duty.facultyName?.replaceAll("Incharge: ", "").replaceAll("Prof. ", "") ?? "UNASSIGNED";
+                ? _buildShimmerLoading() // Triggers the animated skeleton!
+                : RefreshIndicator(
+                    onRefresh: _fetchDuties, // Triggers database fetch on pull down!
+                    color: const Color(0xFF3949AB),
+                    backgroundColor: Colors.white,
+                    child: filteredDuties.isEmpty
+                        ? ListView(
+                            // Forces scrolling even if empty so users can pull to refresh
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: const [
+                              SizedBox(height: 100),
+                              Center(child: Text('No duties found.', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
+                            ],
+                          )
+                        : ListView.builder(
+                            // AlwaysScrollable is required for pull-to-refresh to work consistently
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                            itemCount: filteredDuties.length, 
+                            itemBuilder: (context, index) {
+                              final duty = filteredDuties[index]; 
+                              final color = _getStatusColor(duty.status);
+                              String cleanIncharge = duty.facultyName?.replaceAll("Incharge: ", "").replaceAll("Prof. ", "") ?? "UNASSIGNED";
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 3))]),
-                        child: Row(
-                          children: [
-                            Container(width: 46, height: 46, decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)), child: Icon(Icons.cleaning_services_rounded, color: color, size: 22)),
-                            const SizedBox(width: 14),
-                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text(duty.roomName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5)), 
-                              const SizedBox(height: 2), 
-                              Text('Sweeper: ${duty.sweeperName?.toUpperCase() ?? "UNASSIGNED"} • ${cleanIncharge.toUpperCase()}', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600))
-                            ])),
-                            Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)), child: Text(duty.status.name.toUpperCase(), style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w800))),
-                            
-                            IconButton(icon: Icon(Icons.edit_rounded, color: Colors.blue.shade400, size: 22), onPressed: () => _showEditAssignmentDialog(duty), tooltip: 'Edit Assignment', padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 36)),
-                            IconButton(icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade300, size: 22), onPressed: () => _deleteDuty(duty.id), tooltip: 'Remove Duty', padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 36)),
-                          ],
-                        ),
-                      );
-                    },
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 3))]),
+                                child: Row(
+                                  children: [
+                                    Container(width: 46, height: 46, decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)), child: Icon(Icons.cleaning_services_rounded, color: color, size: 22)),
+                                    const SizedBox(width: 14),
+                                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                      Text(duty.roomName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5)), 
+                                      const SizedBox(height: 2), 
+                                      Text('Sweeper: ${duty.sweeperName?.toUpperCase() ?? "UNASSIGNED"} • ${cleanIncharge.toUpperCase()}', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600))
+                                    ])),
+                                    Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)), child: Text(duty.status.name.toUpperCase(), style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w800))),
+                                    
+                                    IconButton(icon: Icon(Icons.edit_rounded, color: Colors.blue.shade400, size: 22), onPressed: () => _showEditAssignmentDialog(duty), tooltip: 'Edit Assignment', padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 36)),
+                                    IconButton(icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade300, size: 22), onPressed: () => _deleteDuty(duty.id), tooltip: 'Remove Duty', padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 36)),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                   ),
           ),
         ],
