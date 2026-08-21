@@ -14,7 +14,7 @@ class ApiService {
 
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => _fromJson(json)).toList();
+        return data.map((json) => Duty.fromJson(json)).toList();
       } else {
         throw Exception('Failed to load duties');
       }
@@ -107,19 +107,5 @@ class ApiService {
     } catch (e) {
       throw Exception('Error fetching all duties: $e');
     }
-  }
-
-  // --- Helper method to convert JSON from Spring Boot into your Dart Object ---
-  static Duty _fromJson(Map<String, dynamic> json) {
-    return Duty(
-      id: json['id'],
-      roomName: json['roomName'],
-      department: json['department'],
-      status: DutyStatus.values.firstWhere(
-        (e) => e.name.toLowerCase() == json['status'].toString().toLowerCase(),
-        orElse: () => DutyStatus.pending,
-      ),
-      rejectionReason: json['rejectionReason'],
-    );
   }
 }
