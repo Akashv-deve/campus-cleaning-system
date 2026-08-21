@@ -57,4 +57,12 @@ public class DutyService {
     public void deleteDuty(String id) {
         dutyRepository.deleteById(id);
     }
+    public Duty updateAssignment(String id, String sweeperName, String facultyName) {
+        Duty duty = dutyRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Duty not found with id: " + id));
+        
+        duty.setSweeperName(sweeperName);
+        duty.setFacultyName(facultyName);
+        return dutyRepository.save(duty);
+    }
 }

@@ -64,4 +64,16 @@ public class DutyController {
         dutyService.deleteDuty(id);
         return ResponseEntity.ok().build();
     }
+    // 7. (Admin) Update both Sweeper and Faculty assignments
+    @PatchMapping("/{id}/assignment")
+    public ResponseEntity<Duty> updateAssignment(
+            @PathVariable String id,
+            @RequestBody Map<String, String> requestBody) {
+        
+        String sweeperName = requestBody.get("sweeperName");
+        String facultyName = requestBody.get("facultyName");
+        
+        Duty updatedDuty = dutyService.updateAssignment(id, sweeperName, facultyName);
+        return ResponseEntity.ok(updatedDuty);
+    }
 }

@@ -42,8 +42,8 @@ class ApiService {
       throw Exception('Error updating status: $e');
     }
   }
-  // 3. (Admin) Create a new duty and assign a Sweeper
-  static Future<void> createDuty(String roomName, String department, String sweeperName) async {
+  // 3. (Admin) Create a new duty and assign both Sweeper and Faculty instantly
+  static Future<void> createDuty(String roomName, String department, String sweeperName, String facultyName) async {
     try {
       final response = await http.post(
         Uri.parse(baseUrl),
@@ -51,7 +51,8 @@ class ApiService {
         body: jsonEncode({
           'roomName': roomName,
           'department': department,
-          'sweeperName': sweeperName, // Sending the exact sweeper name!
+          'sweeperName': sweeperName, 
+          'facultyName': facultyName, // <-- Spring Boot will auto-save this!
         }),
       );
 
@@ -63,23 +64,23 @@ class ApiService {
     }
   }
 
-  // 4. (Admin) Allot a Faculty member to an existing duty
-  static Future<void> allotFaculty(String dutyId, String facultyName) async {
+  // 4. (Admin) Update both Sweeper and Faculty on an existing duty
+  static Future<void> updateAssignment(String dutyId, String sweeperName, String facultyName) async {
     try {
-      // We use PATCH to update the existing database row
       final response = await http.patch(
-        Uri.parse('$baseUrl/$dutyId/faculty'),
+        Uri.parse('$baseUrl/$dutyId/assignment'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
+          'sweeperName': sweeperName,
           'facultyName': facultyName,
         }),
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Failed to allot faculty');
+        throw Exception('Failed to update assignment');
       }
     } catch (e) {
-      throw Exception('Error allotting faculty: $e');
+      throw Exception('Error updating assignment: $e');
     }
   }
   // 5. (Admin) Delete a duty permanently
