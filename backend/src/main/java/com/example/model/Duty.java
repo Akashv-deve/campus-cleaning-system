@@ -24,5 +24,7 @@ public class Duty {
     @Builder.Default
     private DutyStatus status = DutyStatus.PENDING; // Matches your Dart default
     
-    private String rejectionReason; // Java handles nullables automatically for Strings
+    private String rejectionReason;
+    private String sweeperName;
+    private String facultyName;
 }

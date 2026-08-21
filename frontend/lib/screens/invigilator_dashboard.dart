@@ -5,15 +5,15 @@ import '../widgets/verification_card.dart';
 import '../services/api_service.dart';
 
 class InvigilatorDashboard extends StatefulWidget {
-  const InvigilatorDashboard({super.key});
+  final String facultyName; // <-- Accepts the name from the login screen!
+  const InvigilatorDashboard({super.key, required this.facultyName});
 
   @override
   State<InvigilatorDashboard> createState() => _InvigilatorDashboardState();
 }
 
 class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
-  // --- STATE VARIABLES ---
-  List<Duty> _pendingVerifications = []; // Starts empty!
+  List<Duty> _pendingVerifications = []; 
   bool _isLoading = true;
 
   @override
@@ -22,20 +22,20 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
     _fetchVerifications();
   }
 
-  // --- API FUNCTIONS ---
   Future<void> _fetchVerifications() async {
     try {
-      // Fetch all CSE duties
       final allDuties = await ApiService.getDutiesByDepartment('CSE');
-      if (!mounted) return;
       setState(() {
-        // The Faculty ONLY cares about rooms the Sweeper has marked as 'completed'
-        _pendingVerifications = allDuties.where((d) => d.status == DutyStatus.completed).toList();
+        // FILTER: Only show rooms that are COMPLETED *and* belong to this specific Professor
+        _pendingVerifications = allDuties.where((d) => 
+          d.status == DutyStatus.completed && 
+          d.facultyName != null &&
+          d.facultyName!.toLowerCase().contains(widget.facultyName.toLowerCase())
+        ).toList();
         _isLoading = false;
       });
     } catch (e) {
       debugPrint("Error fetching verifications: $e");
-      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
@@ -197,9 +197,9 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
         backgroundColor: const Color(0xFFF6F7FB),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: const Text(
-          'Pending Verifications',
-          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black87, fontSize: 20),
+        title: Text(
+          'Verify: ${widget.facultyName.toUpperCase()}',
+          style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87, fontSize: 20),
         ),
         actions: [
           IconButton(

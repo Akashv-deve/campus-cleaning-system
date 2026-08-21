@@ -1,5 +1,7 @@
 // lib/screens/login_screen.dart
 import 'package:flutter/material.dart';
+import 'sweeper_dashboard.dart';
+import 'invigilator_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,34 +17,42 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // MOCK LOGIN LOGIC (Preserved exactly as before)
   void _handleLogin() async {
-    // Hide keyboard
     FocusScope.of(context).unfocus();
-
     setState(() => _isLoading = true);
     
-    // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 1200)); 
-    
     final username = _usernameController.text.trim().toLowerCase();
     
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    // Route based on mock usernames
+    // 1. Admin Login
     if (username == 'admin') {
       Navigator.pushReplacementNamed(context, '/admin');
-    } else if (username == 'sweeper') {
-      Navigator.pushReplacementNamed(context, '/sweeper');
-    } else if (username == 'faculty') {
-      Navigator.pushReplacementNamed(context, '/invigilator');
-    } else {
+    } 
+    // 2. Sweeper Login (Matches the names in your Admin Assign dialog)
+    else if (['kumar', 'rajesh', 'lakshmi', 'meena'].contains(username)) {
+      Navigator.pushReplacement(
+        context, 
+        MaterialPageRoute(builder: (context) => SweeperDashboard(sweeperName: username))
+      );
+    } 
+    // 3. Faculty Login (Matches the names in your Faculty Allotment dialog)
+    else if (username.contains('prof') || ['suresh', 'anita', 'karthik'].contains(username)) {
+      Navigator.pushReplacement(
+        context, 
+        MaterialPageRoute(builder: (context) => InvigilatorDashboard(facultyName: username))
+      );
+    } 
+    // 4. Invalid Login
+    else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Row(
             children: [
               Icon(Icons.error_outline_rounded, color: Colors.white),
               SizedBox(width: 10),
-              Expanded(child: Text('Invalid username. Use admin, sweeper, or faculty.')),
+              Expanded(child: Text('Invalid user. Try: admin, kumar, or suresh')),
             ],
           ),
           backgroundColor: const Color(0xFFC62828),

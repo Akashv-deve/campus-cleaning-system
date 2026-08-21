@@ -47,4 +47,14 @@ public class DutyService {
 
         return dutyRepository.save(duty);
     }
+    public Duty allotFaculty(String id, String facultyName) {
+        Duty duty = dutyRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Duty not found with id: " + id));
+        
+        duty.setFacultyName(facultyName);
+        return dutyRepository.save(duty);
+    }
+    public void deleteDuty(String id) {
+        dutyRepository.deleteById(id);
+    }
 }

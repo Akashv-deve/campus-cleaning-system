@@ -154,13 +154,30 @@ class _InchargeAllotmentScreenState extends State<InchargeAllotmentScreen> {
                                 : () async {
                                     setDialogState(() => isSubmitting = true);
                                     try {
-                                      // ApiService.createDuty takes positional
-                                      // (roomName, department) — the backend
-                                      // defaults status to PENDING itself.
-                                      await ApiService.createDuty(
-                                        selectedRoom,
-                                        'Incharge: $selectedFaculty',
-                                      );
+                                      Duty? existingDuty;
+                                      
+                                      // Safely check if the room exists in the DB
+                                      try {
+                                        existingDuty = _facultyDuties.firstWhere((d) => d.roomName == selectedRoom);
+                                      } catch (e) {
+                                        existingDuty = null; 
+                                      }
+
+                                      if (existingDuty == null) {
+                                        setDialogState(() => isSubmitting = false);
+                                        messenger.showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Error: You must assign a Sweeper to this room in the Admin Overview first!'),
+                                            backgroundColor: Color(0xFFC62828),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                        return;
+                                      }
+
+                                      // If it exists, update it!
+                                      await ApiService.allotFaculty(existingDuty.id, selectedFaculty);
+                                      
                                       if (!dialogContext.mounted) return;
                                       Navigator.pop(dialogContext);
                                       await _fetchAllotments();

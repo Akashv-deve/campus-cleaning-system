@@ -5,17 +5,17 @@ import '../widgets/room_card.dart';
 import '../services/api_service.dart';
 
 class SweeperDashboard extends StatefulWidget {
-  const SweeperDashboard({super.key});
+  final String sweeperName; // <-- Accepts the name from the login screen!
+  const SweeperDashboard({super.key, required this.sweeperName});
 
   @override
   State<SweeperDashboard> createState() => _SweeperDashboardState();
 }
 
 class _SweeperDashboardState extends State<SweeperDashboard> {
-  // --- STATE VARIABLES ---
   bool _isTamil = false;
-  List<Duty> duties = []; // <-- Our live data list
-  bool isLoading = true;  // <-- Loading flag
+  List<Duty> duties = []; 
+  bool isLoading = true;  
 
   @override
   void initState() {
@@ -23,13 +23,14 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
     _fetchDuties();
   }
 
-  // --- API FUNCTIONS ---
   Future<void> _fetchDuties() async {
     try {
-      // Assuming this sweeper is assigned to the CSE Dept for now
       final fetchedDuties = await ApiService.getDutiesByDepartment('CSE');
       setState(() {
-        duties = fetchedDuties;
+        // FILTER: Only show duties where the sweeperName matches the logged-in user!
+        duties = fetchedDuties.where((d) => 
+          d.sweeperName != null && d.sweeperName!.toLowerCase() == widget.sweeperName.toLowerCase()
+        ).toList();
         isLoading = false;
       });
     } catch (e) {
@@ -67,7 +68,7 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
         foregroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          _isTamil ? 'இன்றைய வேலைகள்' : 'My Duties Today',
+          _isTamil ? '${widget.sweeperName.toUpperCase()} வேலைகள்' : "${widget.sweeperName.toUpperCase()}'s Duties",
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white), 
         ),
         actions: [

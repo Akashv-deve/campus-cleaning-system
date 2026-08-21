@@ -4,8 +4,6 @@ import 'package:google_fonts/google_fonts.dart'; // NEW IMPORT
 
 import 'screens/login_screen.dart';
 import 'screens/admin_dashboard.dart';
-import 'screens/sweeper_dashboard.dart';
-import 'screens/invigilator_dashboard.dart';
 
 void main() {
   runApp(const CampusCleaningApp());
@@ -55,8 +53,6 @@ class CampusCleaningApp extends StatelessWidget {
       routes: {
         '/': (context) => const LoginScreen(),
         '/admin': (context) => const AdminDashboard(),
-        '/sweeper': (context) => const SweeperDashboard(),
-        '/invigilator': (context) => const InvigilatorDashboard(),
       },
     );
   }

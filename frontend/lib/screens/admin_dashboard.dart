@@ -54,12 +54,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   // --- PRESET & DELETE FUNCTIONS ---
-  void _deleteDuty(String dutyId) {
-    // Note: This only deletes locally for now until we add a backend delete route!
-    setState(() => _allDuties.removeWhere((duty) => duty.id == dutyId));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: const Row(children: [Icon(Icons.delete_outline_rounded, color: Colors.white), SizedBox(width: 10), Text('Duty removed successfully.')]), backgroundColor: const Color(0xFFC62828), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 2)),
-    );
+  Future<void> _deleteDuty(String dutyId) async {
+    try {
+      // Tell MongoDB to delete it forever
+      await ApiService.deleteDuty(dutyId);
+      
+      // Remove it from the screen
+      setState(() => _allDuties.removeWhere((duty) => duty.id == dutyId));
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Row(children: [Icon(Icons.delete_outline_rounded, color: Colors.white), SizedBox(width: 10), Text('Duty permanently deleted.')]), backgroundColor: const Color(0xFFC62828), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 2)),
+      );
+    } catch (e) {
+      debugPrint("Delete failed: $e");
+    }
   }
 
   void _savePreset() {
@@ -172,7 +181,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 
                                 try {
                                   // 1. Send it to MongoDB!
-                                  await ApiService.createDuty(selectedRoom, 'CSE');
+                                  await ApiService.createDuty(selectedRoom, 'CSE', selectedSweeper);
                                   
                                   // 2. Fetch the updated list so it includes the real MongoDB ID
                                   await _fetchDuties();
@@ -305,7 +314,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           children: [
                             Container(width: 46, height: 46, decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)), child: Icon(Icons.cleaning_services_rounded, color: color, size: 22)),
                             const SizedBox(width: 14),
-                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(duty.roomName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5)), const SizedBox(height: 2), Text(duty.department, style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w600))])),
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(duty.roomName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5)), const SizedBox(height: 2),
+                            Text(
+                              'Sweeper: ${duty.sweeperName ?? "Unassigned"}  •  ${duty.facultyName ?? "Unassigned"}', 
+                              style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700, fontWeight: FontWeight.w700)
+                            )])),
                             Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)), child: Text(duty.status.name.toUpperCase(), style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w800))),
                             const SizedBox(width: 4),
                             IconButton(icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade300, size: 22), onPressed: () => _deleteDuty(duty.id), tooltip: 'Remove Duty', padding: EdgeInsets.zero, constraints: const BoxConstraints()),

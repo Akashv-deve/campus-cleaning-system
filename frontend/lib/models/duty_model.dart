@@ -1,5 +1,3 @@
-// lib/models/duty_model.dart
-
 enum DutyStatus { pending, completed, verified, rejected }
 
 class Duty {
@@ -7,7 +5,11 @@ class Duty {
   final String roomName;
   final String department;
   DutyStatus status;
-  String? rejectionReason; // Only used if status is rejected
+  final String? rejectionReason;
+  
+  // NEW: Real role-based tracking
+  final String? sweeperName;
+  final String? facultyName;
 
   Duty({
     required this.id,
@@ -15,5 +17,22 @@ class Duty {
     required this.department,
     this.status = DutyStatus.pending,
     this.rejectionReason,
+    this.sweeperName,
+    this.facultyName,
   });
+
+  factory Duty.fromJson(Map<String, dynamic> json) {
+    return Duty(
+      id: json['id'],
+      roomName: json['roomName'],
+      department: json['department'],
+      rejectionReason: json['rejectionReason'],
+      sweeperName: json['sweeperName'],
+      facultyName: json['facultyName'],
+      status: DutyStatus.values.firstWhere(
+        (e) => e.name.toLowerCase() == json['status'].toString().toLowerCase(),
+        orElse: () => DutyStatus.pending,
+      ),
+    );
+  }
 }

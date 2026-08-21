@@ -42,34 +42,64 @@ class ApiService {
       throw Exception('Error updating status: $e');
     }
   }
-  // 3. (Admin) Create a new duty
-  static Future<void> createDuty(String roomName, String department) async {
+  // 3. (Admin) Create a new duty and assign a Sweeper
+  static Future<void> createDuty(String roomName, String department, String sweeperName) async {
     try {
       final response = await http.post(
-        Uri.parse(baseUrl), // Sends to http://localhost:8080/api/duties
+        Uri.parse(baseUrl),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'roomName': roomName,
           'department': department,
-          // We don't send an ID (MongoDB creates it) or Status (Java defaults it to PENDING)
+          'sweeperName': sweeperName, // Sending the exact sweeper name!
         }),
       );
 
-      if (response.statusCode != 200) {
+      if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Failed to create duty');
       }
     } catch (e) {
       throw Exception('Error creating duty: $e');
     }
   }
-  // 4. (Admin) Get all duties across the campus
+
+  // 4. (Admin) Allot a Faculty member to an existing duty
+  static Future<void> allotFaculty(String dutyId, String facultyName) async {
+    try {
+      // We use PATCH to update the existing database row
+      final response = await http.patch(
+        Uri.parse('$baseUrl/$dutyId/faculty'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'facultyName': facultyName,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to allot faculty');
+      }
+    } catch (e) {
+      throw Exception('Error allotting faculty: $e');
+    }
+  }
+  // 5. (Admin) Delete a duty permanently
+  static Future<void> deleteDuty(String dutyId) async {
+    try {
+      final response = await http.delete(Uri.parse('$baseUrl/$dutyId'));
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete duty');
+      }
+    } catch (e) {
+      throw Exception('Error deleting duty: $e');
+    }
+  }
+  // (Admin) Get all duties across the campus
   static Future<List<Duty>> getAllDuties() async {
     try {
       final response = await http.get(Uri.parse(baseUrl));
-
       if (response.statusCode == 200) {
-        List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => _fromJson(json)).toList();
+        Iterable list = jsonDecode(response.body);
+        return list.map((model) => Duty.fromJson(model)).toList();
       } else {
         throw Exception('Failed to load all duties');
       }
@@ -77,12 +107,6 @@ class ApiService {
       throw Exception('Error fetching all duties: $e');
     }
   }
-  static Future<void> deleteDuty(String dutyId) async {
-  final response = await http.delete(Uri.parse('$baseUrl/$dutyId'));
-  if (response.statusCode != 200 && response.statusCode != 204) {
-    throw Exception('Failed to delete duty');
-  }
-}
 
   // --- Helper method to convert JSON from Spring Boot into your Dart Object ---
   static Duty _fromJson(Map<String, dynamic> json) {

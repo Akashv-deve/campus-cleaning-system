@@ -48,4 +48,20 @@ public class DutyController {
     public ResponseEntity<Duty> createDuty(@RequestBody Duty duty) {
         return ResponseEntity.ok(dutyService.createDuty(duty));
     }
+    // 5. (Admin) Allot a faculty member to an existing duty
+    @PatchMapping("/{id}/faculty")
+    public ResponseEntity<Duty> allotFaculty(
+            @PathVariable String id,
+            @RequestBody Map<String, String> requestBody) {
+        
+        String facultyName = requestBody.get("facultyName");
+        Duty updatedDuty = dutyService.allotFaculty(id, facultyName);
+        return ResponseEntity.ok(updatedDuty);
+    }
+    // 6. (Admin) Permanently delete a duty
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteDuty(@PathVariable String id) {
+        dutyService.deleteDuty(id);
+        return ResponseEntity.ok().build();
+    }
 }
