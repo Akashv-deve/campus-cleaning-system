@@ -288,6 +288,56 @@ class _AdminDashboardState extends State<AdminDashboard> {
       },
     );
   }
+  // --- BULK DELETE SMART PURGE ---
+  Future<void> _bulkDeleteLogs() async {
+    // Ask admin where deletion should stop
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2023),
+      lastDate: DateTime.now(),
+      helpText: 'SELECT CUT-OFF DATE',
+      confirmText: 'PURGE OLD LOGS',
+    );
+
+    if (selectedDate == null) return; // User canceled
+
+    setState(() => _isLoading = true);
+    int deletedCount = 0;
+
+    for (var duty in _allDuties) {
+      // Only delete if it is fully verified and has a timestamp
+      if (duty.status == DutyStatus.verified && duty.verifiedTime != null) {
+        try {
+          // Parse your custom "21/8, 9:05 PM" string back into a real Date!
+          final parts = duty.verifiedTime!.split(', ');
+          final dateParts = parts[0].split('/');
+          final day = int.parse(dateParts[0]);
+          final month = int.parse(dateParts[1]);
+          final dutyDate = DateTime(DateTime.now().year, month, day);
+
+          // If the log is OLDER than the cut-off date chosen, permanently delete it
+          if (dutyDate.isBefore(selectedDate) || dutyDate.isAtSameMomentAs(selectedDate)) {
+            await ApiService.deleteDuty(duty.id);
+            deletedCount++;
+          }
+        } catch (e) {
+          debugPrint("Date parse skipped: $e");
+        }
+      }
+    }
+
+    await _fetchDuties(); // Refresh screen
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(deletedCount > 0 ? 'Successfully purged $deletedCount old records.' : 'No verified logs found before that date.'),
+        backgroundColor: deletedCount > 0 ? const Color(0xFF2E7D32) : const Color(0xFFEF6C00),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
   // --- PDF REPORT FUNCTIONS ---
   void _showReportSelector(BuildContext context) {
     showModalBottomSheet(
@@ -374,15 +424,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
           
-          // PDF BUTTON
+          // PDF & PURGE BUTTONS
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: InkWell(
-              onTap: () => _showReportSelector(context),
-              borderRadius: BorderRadius.circular(18),
-              child: Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFD32F2F).withValues(alpha: 0.2)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))]), child: Row(children: [Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFD32F2F).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFD32F2F))), const SizedBox(width: 16), const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Generate PDF Reports', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)), Text('Download classroom & sweeper logs', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500))])), const Icon(Icons.file_download_rounded, color: Colors.grey)])),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: InkWell(
+                    onTap: () => _showReportSelector(context),
+                    borderRadius: BorderRadius.circular(18),
+                    child: Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFF3949AB).withValues(alpha: 0.2)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))]), child: Row(children: [Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFF3949AB).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFF3949AB))), const SizedBox(width: 16), const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Generate PDF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)), Text('Download logs', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500))]))])),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 1,
+                  child: InkWell(
+                    onTap: _bulkDeleteLogs, // Triggers our new Bulk Deleter
+                    borderRadius: BorderRadius.circular(18),
+                    child: Container(padding: const EdgeInsets.symmetric(vertical: 23), decoration: BoxDecoration(color: const Color(0xFFFFF0F0), borderRadius: BorderRadius.circular(18), border: Border.all(color: Colors.red.shade200)), child: const Column(children: [Icon(Icons.auto_delete_rounded, color: Color(0xFFD32F2F), size: 28), SizedBox(height: 4), Text('Purge Logs', style: TextStyle(color: Color(0xFFD32F2F), fontWeight: FontWeight.bold, fontSize: 13))])),
+                  ),
+                ),
+              ],
             ),
           ),
+          const SizedBox(height: 8),
           const SizedBox(height: 8),
 
           SizedBox(

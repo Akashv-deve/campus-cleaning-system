@@ -4,7 +4,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../models/duty_model.dart';
 
-class LogReportScreen extends StatelessWidget {
+class LogReportScreen extends StatefulWidget {
   final List<Duty> duties;
   final String reportTitle;
   final String reportType; // 'sweeper' or 'classroom'
@@ -16,6 +16,55 @@ class LogReportScreen extends StatelessWidget {
     required this.reportType,
   });
 
+  @override
+  State<LogReportScreen> createState() => _LogReportScreenState();
+}
+
+class _LogReportScreenState extends State<LogReportScreen> {
+  String _selectedEntity = 'All';
+  List<String> _filterOptions = ['All'];
+
+  @override
+  void initState() {
+    super.initState();
+    _generateFilterOptions();
+  }
+
+  // Automatically finds every custom name in the database for the dropdown
+  void _generateFilterOptions() {
+    Set<String> uniqueNames = {};
+    for (var duty in widget.duties) {
+      if (widget.reportType == 'sweeper') {
+        uniqueNames.add(duty.sweeperName?.toUpperCase() ?? 'UNASSIGNED');
+      } else {
+        uniqueNames.add(duty.roomName);
+      }
+    }
+    setState(() {
+      _filterOptions = ['All', ...uniqueNames.toList()..sort()];
+    });
+  }
+
+  // Filters the list so you can view an individual page
+  List<Duty> get _filteredDuties {
+    List<Duty> filtered = List.from(widget.duties);
+    if (_selectedEntity != 'All') {
+      if (widget.reportType == 'sweeper') {
+        filtered = filtered.where((d) => (d.sweeperName?.toUpperCase() ?? 'UNASSIGNED') == _selectedEntity).toList();
+      } else {
+        filtered = filtered.where((d) => d.roomName == _selectedEntity).toList();
+      }
+    }
+    
+    // Sort the final result
+    if (widget.reportType == 'sweeper') {
+      filtered.sort((a, b) => (a.sweeperName ?? 'z').compareTo(b.sweeperName ?? 'z'));
+    } else {
+      filtered.sort((a, b) => a.roomName.compareTo(b.roomName));
+    }
+    return filtered;
+  }
+
   String _getCurrentDateTime() {
     final now = DateTime.now();
     final minute = now.minute.toString().padLeft(2, '0');
@@ -25,14 +74,7 @@ class LogReportScreen extends StatelessWidget {
   Future<void> _generateAndPrintPdf(BuildContext context) async {
     final doc = pw.Document();
     final timestamp = _getCurrentDateTime();
-
-    // Sort data based on report type
-    List<Duty> sortedDuties = List.from(duties);
-    if (reportType == 'sweeper') {
-      sortedDuties.sort((a, b) => (a.sweeperName ?? 'z').compareTo(b.sweeperName ?? 'z'));
-    } else {
-      sortedDuties.sort((a, b) => a.roomName.compareTo(b.roomName));
-    }
+    final dataList = _filteredDuties; // Only prints the filtered individual!
 
     doc.addPage(
       pw.Page(
@@ -41,7 +83,10 @@ class LogReportScreen extends StatelessWidget {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Text(reportTitle, style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+              pw.Text(
+                _selectedEntity == 'All' ? widget.reportTitle : '${widget.reportTitle}: $_selectedEntity', 
+                style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)
+              ),
               pw.SizedBox(height: 8),
               pw.Text('Generated on: $timestamp', style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700)),
               pw.SizedBox(height: 24),
@@ -52,22 +97,20 @@ class LogReportScreen extends StatelessWidget {
                 rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5))),
                 cellAlignment: pw.Alignment.centerLeft,
                 data: <List<String>>[
-                  // Dynamic Columns based on what the Admin selected
-                  reportType == 'sweeper' 
-                      ? ['Sweeper Name', 'Assigned Room', 'Current Status', 'Verified By']
-                      : ['Classroom', 'Current Status', 'Assigned Sweeper', 'Faculty Incharge'],
+                  widget.reportType == 'sweeper' 
+                      ? ['Sweeper Name', 'Assigned Room', 'Status', 'Verified By']
+                      : ['Classroom', 'Status', 'Assigned Sweeper', 'Faculty Incharge'],
                   
-                  // Dynamic Rows
-                  ...sortedDuties.map((duty) => reportType == 'sweeper'
+                  ...dataList.map((duty) => widget.reportType == 'sweeper'
                       ? [
                           duty.sweeperName?.toUpperCase() ?? 'UNASSIGNED',
                           duty.roomName,
-                          duty.status == DutyStatus.verified ? 'Done at ${duty.completedTime}' : duty.status.name.toUpperCase(),
+                          duty.status == DutyStatus.verified ? 'Done at ${duty.completedTime ?? ""}' : duty.status.name.toUpperCase(),
                           duty.facultyName?.replaceAll('Incharge: ', '') ?? 'N/A'
                         ]
                       : [
                           duty.roomName,
-                          duty.status == DutyStatus.verified ? 'Verified at ${duty.verifiedTime}' : duty.status.name.toUpperCase(),
+                          duty.status == DutyStatus.verified ? 'Verified at ${duty.verifiedTime ?? ""}' : duty.status.name.toUpperCase(),
                           duty.sweeperName?.toUpperCase() ?? 'UNASSIGNED',
                           duty.facultyName?.replaceAll('Incharge: ', '') ?? 'N/A'
                         ]),
@@ -81,40 +124,58 @@ class LogReportScreen extends StatelessWidget {
 
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => doc.save(),
-      name: '${reportTitle.replaceAll(' ', '_')}.pdf',
+      name: '${_selectedEntity}_Log.pdf',
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Sort for the UI viewer as well
-    List<Duty> sortedDuties = List.from(duties);
-    if (reportType == 'sweeper') {
-      sortedDuties.sort((a, b) => (a.sweeperName ?? 'z').compareTo(b.sweeperName ?? 'z'));
-    } else {
-      sortedDuties.sort((a, b) => a.roomName.compareTo(b.roomName));
-    }
+    final displayData = _filteredDuties;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F8),
       appBar: AppBar(
-        title: Text(reportTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text(widget.reportTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: const Color(0xFFF3F4F8),
         surfaceTintColor: Colors.transparent,
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // THE INDIVIDUAL FILTER DROPDOWN
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: Colors.white,
+            child: Row(
+              children: [
+                const Icon(Icons.filter_list_rounded, color: Color(0xFF3949AB)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedEntity,
+                      isExpanded: true,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                      items: _filterOptions.map((item) => DropdownMenuItem(value: item, child: Text(item, style: const TextStyle(fontWeight: FontWeight.bold)))).toList(),
+                      onChanged: (val) => setState(() => _selectedEntity = val!),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Text('Report generated locally at: ${_getCurrentDateTime()}', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+            child: Text('Showing ${displayData.length} records • Time: ${_getCurrentDateTime()}', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
           ),
+          
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: sortedDuties.length,
+              itemCount: displayData.length,
               itemBuilder: (context, index) {
-                final duty = sortedDuties[index];
+                final duty = displayData[index];
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(16),
@@ -125,18 +186,15 @@ class LogReportScreen extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Highlight Sweeper OR Room based on the report type
                           Text(
-                            reportType == 'sweeper' 
-                                ? 'Room: ${duty.roomName} • Completed: ${duty.completedTime ?? "Pending"}'
-                                : 'Sweeper: ${duty.sweeperName?.toUpperCase() ?? "N/A"} • Verified: ${duty.verifiedTime ?? "Pending"}', 
-                            style: TextStyle(color: Colors.grey.shade600, fontSize: 13)
+                            widget.reportType == 'sweeper' ? (duty.sweeperName?.toUpperCase() ?? 'UNASSIGNED') : duty.roomName, 
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            reportType == 'sweeper' 
-                                ? 'Room: ${duty.roomName} • ${duty.facultyName?.replaceAll("Incharge: ", "") ?? "N/A"}'
-                                : 'Sweeper: ${duty.sweeperName?.toUpperCase() ?? "N/A"} • ${duty.facultyName?.replaceAll("Incharge: ", "") ?? "N/A"}', 
+                            widget.reportType == 'sweeper' 
+                                ? 'Room: ${duty.roomName} • Completed: ${duty.completedTime ?? "Pending"}'
+                                : 'Sweeper: ${duty.sweeperName?.toUpperCase() ?? "N/A"} • Verified: ${duty.verifiedTime ?? "Pending"}', 
                             style: TextStyle(color: Colors.grey.shade600, fontSize: 13)
                           ),
                         ],
@@ -155,7 +213,7 @@ class LogReportScreen extends StatelessWidget {
         backgroundColor: const Color(0xFFD32F2F),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.picture_as_pdf_rounded),
-        label: const Text('Download PDF', style: TextStyle(fontWeight: FontWeight.bold)),
+        label: const Text('Download Individual PDF', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
     );
   }
