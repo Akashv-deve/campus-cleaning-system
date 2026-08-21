@@ -14,47 +14,57 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isPasswordVisible = false; // NEW: Tracks password visibility
 
   void _handleLogin() async {
     FocusScope.of(context).unfocus();
-    setState(() => _isLoading = true);
     
-    await Future.delayed(const Duration(milliseconds: 1200)); 
-    final username = _usernameController.text.trim().toLowerCase();
+    final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
+
+    if (username.isEmpty) {
+      _showError('Please enter a username.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 1000)); 
     
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    // 1. Admin Login (Requires Password)
-    if (username == 'admin') {
+    // SMART MVP ROUTING: Determines role based on the password used!
+    
+    // 1. Admin Login
+    if (username.toLowerCase() == 'admin') {
       if (password == 'admin123') {
         Navigator.pushReplacementNamed(context, '/admin');
       } else {
         _showError('Incorrect Admin password.');
       }
     } 
-    // 2. Faculty Login (Requires PIN)
-    else if (username.contains('prof') || ['suresh', 'anita', 'karthik'].contains(username)) {
-      if (password == '1234') {
-        Navigator.pushReplacement(
-          context, 
-          MaterialPageRoute(builder: (context) => InvigilatorDashboard(facultyName: username))
-        );
-      } else {
-        _showError('Incorrect Faculty PIN. Try 1234');
-      }
+    // 2. Faculty Login (If they use the 1234 PIN, they are faculty!)
+    else if (password == '1234') {
+      // Auto-formats the name to match the DB format just in case they forget "Prof."
+      String formattedName = username.toLowerCase().startsWith('prof') 
+          ? username 
+          : 'Prof. $username';
+          
+      Navigator.pushReplacement(
+        context, 
+        MaterialPageRoute(builder: (context) => InvigilatorDashboard(facultyName: formattedName))
+      );
     } 
-    // 3. Sweeper Login (No Password Required - Low Friction)
-    else if (['kumar', 'rajesh', 'lakshmi', 'meena'].contains(username)) {
+    // 3. Sweeper Login (If the password is blank, they are a sweeper!)
+    else if (password.isEmpty) {
       Navigator.pushReplacement(
         context, 
         MaterialPageRoute(builder: (context) => SweeperDashboard(sweeperName: username))
       );
     } 
-    // 4. Invalid Username
+    // 4. Invalid Password
     else {
-      _showError('Invalid user. Try: admin, kumar, or suresh');
+      _showError('Invalid password. Use 1234 for Faculty, or leave blank for Sweeper.');
     }
   }
 
@@ -109,15 +119,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 32),
                 
-                const Text(
-                  'Welcome Back',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.black87, letterSpacing: -0.5),
-                ),
+                const Text('Welcome Back', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.black87, letterSpacing: -0.5)),
                 const SizedBox(height: 8),
-                Text(
-                  'Sign in to manage campus duties',
-                  style: TextStyle(fontSize: 16, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
-                ),
+                Text('Sign in to manage campus duties', style: TextStyle(fontSize: 16, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 40),
 
                 Container(
@@ -137,11 +141,23 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 16),
                       
+                      // PASSWORD FIELD WITH EYE ICON
                       _buildTextField(
                         controller: _passwordController,
                         label: 'Password (Leave blank for Sweeper)',
                         icon: Icons.lock_outline_rounded,
-                        isObscure: true,
+                        isObscure: !_isPasswordVisible,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isPasswordVisible ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                            color: Colors.grey.shade500,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isPasswordVisible = !_isPasswordVisible;
+                            });
+                          },
+                        ),
                       ),
                       const SizedBox(height: 28),
 
@@ -176,12 +192,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 32),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.indigo.withValues(alpha:0.05),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  decoration: BoxDecoration(color: Colors.indigo.withValues(alpha:0.05), borderRadius: BorderRadius.circular(12)),
                   child: Text(
-                    'Demo Logins:\nAdmin: admin / admin123\nFaculty: suresh / 1234\nSweeper: kumar / (no password)',
+                    'Demo Logins:\nAdmin: admin / admin123\nFaculty: type your name / 1234\nSweeper: type your name / (no password)',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.indigo.shade400, height: 1.4),
                   ),
@@ -194,7 +207,14 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String label, required IconData icon, required bool isObscure}) {
+  // Updated helper widget to accept the suffixIcon
+  Widget _buildTextField({
+    required TextEditingController controller, 
+    required String label, 
+    required IconData icon, 
+    required bool isObscure,
+    Widget? suffixIcon,
+  }) {
     return TextField(
       controller: controller,
       obscureText: isObscure,
@@ -203,6 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
         labelText: label,
         labelStyle: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500),
         prefixIcon: Icon(icon, color: const Color(0xFF3949AB), size: 22),
+        suffixIcon: suffixIcon,
         filled: true,
         fillColor: const Color(0xFFF7F7FA),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),

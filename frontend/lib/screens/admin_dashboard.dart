@@ -57,17 +57,73 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
+  // --- PDF REPORT FUNCTIONS ---
+  void _showReportSelector(BuildContext context) {
+    showModalBottomSheet(
+      context: context, backgroundColor: Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
+              const SizedBox(height: 24),
+              const Row(children: [Icon(Icons.analytics_rounded, color: Color(0xFF3949AB), size: 28), SizedBox(width: 12), Text('Generate Reports', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87))]),
+              const SizedBox(height: 24),
+              _buildReportOption(context, title: 'Sweeper Log Report', subtitle: 'Daily attendance & completion stats', icon: Icons.person_search_rounded, color: const Color(0xFF00897B)),
+              const SizedBox(height: 12),
+              _buildReportOption(context, title: 'Classroom Status Log', subtitle: 'Verification history by faculty', icon: Icons.meeting_room_rounded, color: const Color(0xFFE53935)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildReportOption(BuildContext context, {required String title, required String subtitle, required IconData icon, required Color color}) {
+    return InkWell(
+      onTap: () { Navigator.pop(context); _simulatePdfDownload(title); },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5), borderRadius: BorderRadius.circular(16), color: color.withValues(alpha: 0.05)),
+        child: Row(
+          children: [
+            Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: color, size: 26)),
+            const SizedBox(width: 16),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)), const SizedBox(height: 2), Text(subtitle, style: TextStyle(color: Colors.grey.shade700, fontSize: 13))])),
+            Icon(Icons.download_rounded, color: color),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _simulatePdfDownload(String reportName) async {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)), const SizedBox(width: 16), Text('Generating $reportName...')]), backgroundColor: const Color(0xFF3949AB), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 2)));
+    await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Row(children: [Icon(Icons.check_circle_rounded, color: Colors.white), SizedBox(width: 12), Text('PDF Saved to Downloads Folder!')]), backgroundColor: const Color(0xFF2E7D32), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 3)));
+  }
+
   // --- UPGRADED: EDIT BOTH ASSIGNMENTS DIALOG ---
   void _showEditAssignmentDialog(Duty duty) {
-    // Set defaults based on existing data
-    String selectedSweeper = ['kumar', 'rajesh', 'lakshmi', 'meena'].contains(duty.sweeperName?.toLowerCase()) 
-        ? duty.sweeperName!.toLowerCase() 
-        : 'kumar';
-        
+    // Dynamically build lists so custom names from DB don't crash the dropdown
+    String currentSweeper = duty.sweeperName?.toLowerCase() ?? 'kumar';
+    List<String> sweeperOptions = ['kumar', 'rajesh', 'lakshmi', 'meena'];
+    if (!sweeperOptions.contains(currentSweeper) && currentSweeper != 'unassigned') sweeperOptions.insert(0, currentSweeper);
+    sweeperOptions.add('Add New Sweeper...');
+
     String currentFac = duty.facultyName?.replaceAll('Incharge: ', '') ?? 'Prof. Suresh';
-    String selectedFaculty = ['Prof. Suresh', 'Prof. Anita', 'Prof. Karthik', 'Prof. Meena'].contains(currentFac) 
-        ? currentFac 
-        : 'Prof. Suresh';
+    List<String> facultyOptions = ['Prof. Suresh', 'Prof. Anita', 'Prof. Karthik', 'Prof. Meena'];
+    if (!facultyOptions.contains(currentFac) && currentFac != 'Unassigned') facultyOptions.insert(0, currentFac);
+    facultyOptions.add('Add New Faculty...');
+
+    bool isCustomSweeper = false;
+    final customSweeperController = TextEditingController();
+    bool isCustomFaculty = false;
+    final customFacultyController = TextEditingController();
     
     showDialog(
       context: context,
@@ -78,54 +134,77 @@ class _AdminDashboardState extends State<AdminDashboard> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
               child: Padding(
                 padding: const EdgeInsets.all(26.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Edit Assignment', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 24),
-                    
-                    // SWEEPER DROPDOWN
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedSweeper,
-                      decoration: InputDecoration(labelText: 'Reassign Sweeper', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)),
-                      items: const ['kumar', 'rajesh', 'lakshmi', 'meena'].map((item) => DropdownMenuItem(value: item, child: Text(item.toUpperCase()))).toList(),
-                      onChanged: (value) => setDialogState(() => selectedSweeper = value!),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // FACULTY DROPDOWN
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedFaculty,
-                      decoration: InputDecoration(labelText: 'Reassign Faculty', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)),
-                      items: const ['Prof. Suresh', 'Prof. Anita', 'Prof. Karthik', 'Prof. Meena'].map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
-                      onChanged: (value) => setDialogState(() => selectedFaculty = value!),
-                    ),
-                    const SizedBox(height: 28),
-                    
-                    Row(
-                      children: [
-                        Expanded(child: TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel'))),
-                        Expanded(
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3949AB), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                            onPressed: () async {
-                              Navigator.pop(context);
-                              setState(() => _isLoading = true);
-                              try {
-                                // Send both names to the new Java route!
-                                await ApiService.updateAssignment(duty.id, selectedSweeper, 'Incharge: $selectedFaculty');
-                                await _fetchDuties();
-                              } catch (e) {
-                                debugPrint("Update failed: $e");
-                                setState(() => _isLoading = false);
-                              }
-                            },
-                            child: const Text('Update'),
-                          ),
-                        ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Edit Assignment', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 24),
+                      
+                      // SWEEPER DROPDOWN
+                      DropdownButtonFormField<String>(
+                        initialValue: currentSweeper,
+                        decoration: InputDecoration(labelText: 'Reassign Sweeper', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)),
+                        items: sweeperOptions.map((item) => DropdownMenuItem(value: item, child: Text(item.toUpperCase()))).toList(),
+                        onChanged: (value) {
+                          setDialogState(() {
+                            if (value == 'Add New Sweeper...') { isCustomSweeper = true; } 
+                            else { isCustomSweeper = false; currentSweeper = value!; }
+                          });
+                        },
+                      ),
+                      if (isCustomSweeper) ...[
+                        const SizedBox(height: 12),
+                        TextField(controller: customSweeperController, decoration: InputDecoration(hintText: 'Type new sweeper name...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
                       ],
-                    ),
-                  ],
+                      
+                      const SizedBox(height: 16),
+                      // FACULTY DROPDOWN
+                      DropdownButtonFormField<String>(
+                        initialValue: currentFac,
+                        decoration: InputDecoration(labelText: 'Reassign Faculty', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)),
+                        items: facultyOptions.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
+                        onChanged: (value) {
+                          setDialogState(() {
+                            if (value == 'Add New Faculty...') { isCustomFaculty = true; } 
+                            else { isCustomFaculty = false; currentFac = value!; }
+                          });
+                        },
+                      ),
+                      if (isCustomFaculty) ...[
+                        const SizedBox(height: 12),
+                        TextField(controller: customFacultyController, decoration: InputDecoration(hintText: 'e.g., Prof. Rajesh', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
+                      ],
+
+                      const SizedBox(height: 28),
+                      Row(
+                        children: [
+                          Expanded(child: TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel'))),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3949AB), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                              onPressed: () async {
+                                String finalSweeper = isCustomSweeper ? customSweeperController.text.trim().toLowerCase() : currentSweeper;
+                                String finalFac = isCustomFaculty ? 'Incharge: ${customFacultyController.text.trim()}' : 'Incharge: $currentFac';
+                                if (finalSweeper.isEmpty || (isCustomFaculty && customFacultyController.text.trim().isEmpty)) return;
+                                
+                                Navigator.pop(context);
+                                setState(() => _isLoading = true);
+                                try {
+                                  await ApiService.updateAssignment(duty.id, finalSweeper, finalFac);
+                                  await _fetchDuties();
+                                } catch (e) {
+                                  debugPrint("Update failed: $e");
+                                  setState(() => _isLoading = false);
+                                }
+                              },
+                              child: const Text('Update'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -140,8 +219,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
     String selectedRoom = 'CSE Lab 1';
     bool isCustomRoom = false;
     final customRoomController = TextEditingController();
+    
     String selectedSweeper = 'kumar';
+    bool isCustomSweeper = false;
+    final customSweeperController = TextEditingController();
+    
     String selectedFaculty = 'Prof. Suresh';
+    bool isCustomFaculty = false;
+    final customFacultyController = TextEditingController();
 
     showDialog(
       context: context,
@@ -152,68 +237,98 @@ class _AdminDashboardState extends State<AdminDashboard> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
               child: Padding(
                 padding: const EdgeInsets.all(26.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(children: [Icon(Icons.add_task_rounded, color: Color(0xFF3949AB), size: 28), SizedBox(width: 12), Text('Assign New Duty', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))]),
-                    const SizedBox(height: 24),
-                    
-                    // SMART ROOM SELECTOR
-                    DropdownButtonFormField<String>(
-                      initialValue: isCustomRoom ? 'Add New Room...' : selectedRoom,
-                      decoration: InputDecoration(labelText: 'Select Room', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)),
-                      items: const ['CSE Lab 1', 'CSE Lab 2', 'IoT Lab', 'Classroom 301', 'HOD Cabin', 'Add New Room...'].map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
-                      onChanged: (value) {
-                        setDialogState(() {
-                          if (value == 'Add New Room...') {
-                            isCustomRoom = true;
-                          } else {
-                            isCustomRoom = false;
-                            selectedRoom = value!;
-                          }
-                        });
-                      },
-                    ),
-                    if (isCustomRoom) ...[
-                      const SizedBox(height: 12),
-                      TextField(controller: customRoomController, decoration: InputDecoration(hintText: 'Type custom room name...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
-                    ],
-
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(initialValue: selectedSweeper, decoration: InputDecoration(labelText: 'Assign Sweeper', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), items: const ['kumar', 'rajesh', 'lakshmi', 'meena'].map((item) => DropdownMenuItem(value: item, child: Text(item.toUpperCase()))).toList(), onChanged: (value) => setDialogState(() => selectedSweeper = value!)),
-                    
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(initialValue: selectedFaculty, decoration: InputDecoration(labelText: 'Assign Faculty', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), items: const ['Prof. Suresh', 'Prof. Anita', 'Prof. Karthik', 'Prof. Meena'].map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(), onChanged: (value) => setDialogState(() => selectedFaculty = value!)),
-
-                    const SizedBox(height: 28),
-                    Row(
-                      children: [
-                        Expanded(child: TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel'))),
-                        Expanded(
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3949AB), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                            onPressed: () async {
-                              String finalRoom = isCustomRoom ? customRoomController.text.trim() : selectedRoom;
-                              if (finalRoom.isEmpty) return;
-                              
-                              Navigator.pop(context);
-                              setState(() => _isLoading = true);
-                              try {
-                                // Submits everything in one clean request!
-                                await ApiService.createDuty(finalRoom, 'CSE', selectedSweeper, 'Incharge: $selectedFaculty');
-                                await _fetchDuties();
-                              } catch (e) {
-                                debugPrint("Creation failed: $e");
-                                setState(() => _isLoading = false);
-                              }
-                            },
-                            child: const Text('Assign', style: TextStyle(fontWeight: FontWeight.w700)),
-                          ),
-                        ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(children: [Icon(Icons.add_task_rounded, color: Color(0xFF3949AB), size: 28), SizedBox(width: 12), Text('Assign New Duty', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))]),
+                      const SizedBox(height: 24),
+                      
+                      // ROOM
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedRoom,
+                        decoration: InputDecoration(labelText: 'Select Room', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)),
+                        items: const ['CSE Lab 1', 'CSE Lab 2', 'IoT Lab', 'Classroom 301', 'HOD Cabin', 'Add New Room...'].map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
+                        onChanged: (value) {
+                          setDialogState(() {
+                            if (value == 'Add New Room...') { isCustomRoom = true; } 
+                            else { isCustomRoom = false; selectedRoom = value!; }
+                          });
+                        },
+                      ),
+                      if (isCustomRoom) ...[
+                        const SizedBox(height: 12),
+                        TextField(controller: customRoomController, decoration: InputDecoration(hintText: 'Type custom room name...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
                       ],
-                    ),
-                  ],
+
+                      const SizedBox(height: 16),
+                      // SWEEPER
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedSweeper, 
+                        decoration: InputDecoration(labelText: 'Assign Sweeper', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), 
+                        items: const ['kumar', 'rajesh', 'lakshmi', 'meena', 'Add New Sweeper...'].map((item) => DropdownMenuItem(value: item, child: Text(item.toUpperCase()))).toList(), 
+                        onChanged: (value) {
+                          setDialogState(() {
+                            if (value == 'Add New Sweeper...') { isCustomSweeper = true; } 
+                            else { isCustomSweeper = false; selectedSweeper = value!; }
+                          });
+                        },
+                      ),
+                      if (isCustomSweeper) ...[
+                        const SizedBox(height: 12),
+                        TextField(controller: customSweeperController, decoration: InputDecoration(hintText: 'Type new sweeper name...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
+                      ],
+                      
+                      const SizedBox(height: 16),
+                      // FACULTY
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedFaculty, 
+                        decoration: InputDecoration(labelText: 'Assign Faculty', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), 
+                        items: const ['Prof. Suresh', 'Prof. Anita', 'Prof. Karthik', 'Prof. Meena', 'Add New Faculty...'].map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(), 
+                        onChanged: (value) {
+                          setDialogState(() {
+                            if (value == 'Add New Faculty...') { isCustomFaculty = true; } 
+                            else { isCustomFaculty = false; selectedFaculty = value!; }
+                          });
+                        }
+                      ),
+                      if (isCustomFaculty) ...[
+                        const SizedBox(height: 12),
+                        TextField(controller: customFacultyController, decoration: InputDecoration(hintText: 'e.g., Prof. Rajesh', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
+                      ],
+
+                      const SizedBox(height: 28),
+                      Row(
+                        children: [
+                          Expanded(child: TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel'))),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3949AB), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                              onPressed: () async {
+                                String finalRoom = isCustomRoom ? customRoomController.text.trim() : selectedRoom;
+                                String finalSweeper = isCustomSweeper ? customSweeperController.text.trim().toLowerCase() : selectedSweeper;
+                                String finalFac = isCustomFaculty ? 'Incharge: ${customFacultyController.text.trim()}' : 'Incharge: $selectedFaculty';
+                                
+                                if (finalRoom.isEmpty || finalSweeper.isEmpty || (isCustomFaculty && customFacultyController.text.trim().isEmpty)) return;
+                                
+                                Navigator.pop(context);
+                                setState(() => _isLoading = true);
+                                try {
+                                  await ApiService.createDuty(finalRoom, 'CSE', finalSweeper, finalFac);
+                                  await _fetchDuties();
+                                } catch (e) {
+                                  debugPrint("Creation failed: $e");
+                                  setState(() => _isLoading = false);
+                                }
+                              },
+                              child: const Text('Assign', style: TextStyle(fontWeight: FontWeight.w700)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -259,6 +374,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
           
+          // PDF BUTTON
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: InkWell(
+              onTap: () => _showReportSelector(context),
+              borderRadius: BorderRadius.circular(18),
+              child: Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFD32F2F).withValues(alpha: 0.2)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))]), child: Row(children: [Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFD32F2F).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFD32F2F))), const SizedBox(width: 16), const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Generate PDF Reports', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)), Text('Download classroom & sweeper logs', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500))])), const Icon(Icons.file_download_rounded, color: Colors.grey)])),
+            ),
+          ),
+          const SizedBox(height: 8),
+
           SizedBox(
             height: 50,
             child: ListView(
@@ -297,15 +423,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             ])),
                             Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)), child: Text(duty.status.name.toUpperCase(), style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w800))),
                             
-                            // NEW EDIT BUTTON
-                            IconButton(
-                              icon: Icon(Icons.edit_rounded, color: Colors.blue.shade400, size: 22), 
-                              onPressed: () => _showEditAssignmentDialog(duty), // <--- Change this name!
-                              tooltip: 'Edit Assignment', 
-                              padding: EdgeInsets.zero, 
-                              constraints: const BoxConstraints(minWidth: 36)
-                            ),
-                            // DELETE BUTTON
+                            IconButton(icon: Icon(Icons.edit_rounded, color: Colors.blue.shade400, size: 22), onPressed: () => _showEditAssignmentDialog(duty), tooltip: 'Edit Assignment', padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 36)),
                             IconButton(icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade300, size: 22), onPressed: () => _deleteDuty(duty.id), tooltip: 'Remove Duty', padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 36)),
                           ],
                         ),
