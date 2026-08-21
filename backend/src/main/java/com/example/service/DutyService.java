@@ -46,8 +46,7 @@ public class DutyService {
             case VERIFIED:
                 duty.setVerifiedTime(timestamp);
                 break;
-            case PENDING:
-            case REJECTED:
+            case PENDING, REJECTED: // <-- Merged with a comma!
                 duty.setCompletedTime(null);
                 duty.setVerifiedTime(null);
                 break;

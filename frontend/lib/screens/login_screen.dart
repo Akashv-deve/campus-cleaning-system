@@ -1,4 +1,3 @@
-// lib/screens/login_screen.dart
 import 'package:flutter/material.dart';
 import 'sweeper_dashboard.dart';
 import 'invigilator_dashboard.dart';
@@ -14,7 +13,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
-  bool _isPasswordVisible = false; // NEW: Tracks password visibility
+  bool _isPasswordVisible = false;
+  
+  // Controls which role tab is currently active
+  String _selectedRole = 'sweeper'; // 'sweeper', 'incharge', 'admin'
 
   void _handleLogin() async {
     FocusScope.of(context).unfocus();
@@ -22,8 +24,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (username.isEmpty) {
-      _showError('Please enter a username.');
+    // Admin doesn't need to type a username, we assume it's 'admin'
+    if (_selectedRole != 'admin' && username.isEmpty) {
+      _showError('Please enter your name.');
       return;
     }
 
@@ -33,39 +36,30 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    // SMART MVP ROUTING: Determines role based on the password used!
-    
-    // 1. Admin Login
-    if (username.toLowerCase() == 'admin') {
+    // EXPLICIT ROLE ROUTING
+    if (_selectedRole == 'admin') {
       if (password == 'admin123') {
         Navigator.pushReplacementNamed(context, '/admin');
       } else {
         _showError('Incorrect Admin password.');
       }
     } 
-    // 2. Faculty Login (If they use the 1234 PIN, they are faculty!)
-    else if (password == '1234') {
-      // Strip out "prof" from the login name so the database filter matches the raw name perfectly
-      String cleanName = username.toLowerCase()
-          .replaceAll('prof.', '')
-          .replaceAll('prof', '')
-          .trim();
-          
-      Navigator.pushReplacement(
-        context, 
-        MaterialPageRoute(builder: (context) => InvigilatorDashboard(facultyName: cleanName))
-      );
-    }
-    // 3. Sweeper Login (If the password is blank, they are a sweeper!)
-    else if (password.isEmpty) {
+    else if (_selectedRole == 'incharge') {
+      if (password == '1234') {
+        // Sends the exact raw name they type to the database filter
+        Navigator.pushReplacement(
+          context, 
+          MaterialPageRoute(builder: (context) => InvigilatorDashboard(facultyName: username))
+        );
+      } else {
+        _showError('Incorrect Incharge PIN. Try 1234');
+      }
+    } 
+    else if (_selectedRole == 'sweeper') {
       Navigator.pushReplacement(
         context, 
         MaterialPageRoute(builder: (context) => SweeperDashboard(sweeperName: username))
       );
-    } 
-    // 4. Invalid Password
-    else {
-      _showError('Invalid password. Use 1234 for Faculty, or leave blank for Sweeper.');
     }
   }
 
@@ -87,6 +81,38 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  Widget _buildRoleTab(String title, String roleValue) {
+    final isSelected = _selectedRole == roleValue;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedRole = roleValue;
+            _usernameController.clear();
+            _passwordController.clear();
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF3949AB) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: isSelected ? Colors.white : Colors.grey.shade600,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,27 +129,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 90,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFF3949AB), Color(0xFF5C6BC0)],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF3949AB).withValues(alpha:0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
+                    gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF3949AB), Color(0xFF5C6BC0)]),
+                    boxShadow: [BoxShadow(color: const Color(0xFF3949AB).withValues(alpha:0.3), blurRadius: 20, offset: const Offset(0, 10))],
                   ),
                   child: const Icon(Icons.cleaning_services_rounded, size: 44, color: Colors.white),
                 ),
                 const SizedBox(height: 32),
                 
-                const Text('Welcome Back', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.black87, letterSpacing: -0.5)),
+                const Text('Campus Cleaning', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: Colors.black87, letterSpacing: -0.5)),
                 const SizedBox(height: 8),
-                Text('Sign in to manage campus duties', style: TextStyle(fontSize: 16, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
-                const SizedBox(height: 40),
+                Text('Select your role to sign in', style: TextStyle(fontSize: 16, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 32),
 
                 Container(
                   padding: const EdgeInsets.all(24),
@@ -134,33 +150,46 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: Column(
                     children: [
-                      _buildTextField(
-                        controller: _usernameController,
-                        label: 'Username',
-                        icon: Icons.person_outline_rounded,
-                        isObscure: false,
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // PASSWORD FIELD WITH EYE ICON
-                      _buildTextField(
-                        controller: _passwordController,
-                        label: 'Password (Leave blank for Sweeper)',
-                        icon: Icons.lock_outline_rounded,
-                        isObscure: !_isPasswordVisible,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _isPasswordVisible ? Icons.visibility_rounded : Icons.visibility_off_rounded,
-                            color: Colors.grey.shade500,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isPasswordVisible = !_isPasswordVisible;
-                            });
-                          },
+                      // THE 3 BUTTON TOGGLE
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(color: const Color(0xFFF4F6F8), borderRadius: BorderRadius.circular(14)),
+                        child: Row(
+                          children: [
+                            _buildRoleTab('Sweeper', 'sweeper'),
+                            _buildRoleTab('Incharge', 'incharge'),
+                            _buildRoleTab('Admin', 'admin'),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 24),
+
+                      // DYNAMIC FIELDS BASED ON ROLE
+                      if (_selectedRole != 'admin') ...[
+                        _buildTextField(
+                          controller: _usernameController,
+                          label: _selectedRole == 'sweeper' ? 'Sweeper Name' : 'Incharge Name',
+                          icon: Icons.person_outline_rounded,
+                          isObscure: false,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      
+                      if (_selectedRole != 'sweeper') ...[
+                        _buildTextField(
+                          controller: _passwordController,
+                          label: _selectedRole == 'admin' ? 'Admin Password' : '4-Digit PIN',
+                          icon: Icons.lock_outline_rounded,
+                          isObscure: !_isPasswordVisible,
+                          suffixIcon: IconButton(
+                            icon: Icon(_isPasswordVisible ? Icons.visibility_rounded : Icons.visibility_off_rounded, color: Colors.grey.shade500),
+                            onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ] else ...[
+                        const SizedBox(height: 8),
+                      ],
 
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
@@ -168,9 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 56,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
-                          gradient: LinearGradient(
-                            colors: _isLoading ? [Colors.grey.shade400, Colors.grey.shade500] : [const Color(0xFF3949AB), const Color(0xFF5C6BC0)],
-                          ),
+                          gradient: LinearGradient(colors: _isLoading ? [Colors.grey.shade400, Colors.grey.shade500] : [const Color(0xFF3949AB), const Color(0xFF5C6BC0)]),
                           boxShadow: _isLoading ? [] : [BoxShadow(color: const Color(0xFF3949AB).withValues(alpha:0.35), blurRadius: 14, offset: const Offset(0, 6))],
                         ),
                         child: Material(
@@ -189,17 +216,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                 ),
-                
-                const SizedBox(height: 32),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(color: Colors.indigo.withValues(alpha:0.05), borderRadius: BorderRadius.circular(12)),
-                  child: Text(
-                    'Demo Logins:\nAdmin: admin / admin123\nFaculty: type your name / 1234\nSweeper: type your name / (no password)',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.indigo.shade400, height: 1.4),
-                  ),
-                ),
               ],
             ),
           ),
@@ -208,14 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Updated helper widget to accept the suffixIcon
-  Widget _buildTextField({
-    required TextEditingController controller, 
-    required String label, 
-    required IconData icon, 
-    required bool isObscure,
-    Widget? suffixIcon,
-  }) {
+  Widget _buildTextField({required TextEditingController controller, required String label, required IconData icon, required bool isObscure, Widget? suffixIcon}) {
     return TextField(
       controller: controller,
       obscureText: isObscure,

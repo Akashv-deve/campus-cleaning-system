@@ -60,10 +60,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  // ==========================================
-  // PRESET ENGINE (Local Storage)
-  // ==========================================
-  
   void _showPresetsMenu(BuildContext context) {
     showModalBottomSheet(
       context: context, backgroundColor: Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
@@ -107,11 +103,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   void _showSavePresetDialog() {
-    // 1. Create a draft from current live duties
+    // Strips out legacy prefixes safely for the UI
     List<Map<String, String>> draftDuties = _allDuties.map((d) => {
       'roomName': d.roomName,
       'sweeperName': d.sweeperName ?? 'unassigned',
-      'facultyName': d.facultyName ?? 'Unassigned',
+      'facultyName': d.facultyName?.replaceAll('Incharge: ', '').replaceAll('Prof. ', '') ?? 'Unassigned',
     }).toList();
     
     final nameController = TextEditingController();
@@ -130,14 +126,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   children: [
                     const Text('Save Duty Preset', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
-                    TextField(
-                      controller: nameController,
-                      decoration: InputDecoration(labelText: 'Preset Name (e.g., Morning Shift)', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)),
-                    ),
+                    TextField(controller: nameController, decoration: InputDecoration(labelText: 'Preset Name', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
                     const SizedBox(height: 16),
                     const Align(alignment: Alignment.centerLeft, child: Text('Assignments in Preset:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
                     const SizedBox(height: 8),
-                    // Draft List
                     Container(
                       height: 180,
                       decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(12)),
@@ -148,26 +140,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           return ListTile(
                             dense: true,
                             title: Text(d['roomName']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text('${d['sweeperName']?.toUpperCase()} • ${d['facultyName']?.replaceAll("Incharge: ", "")}'),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                              onPressed: () => setDialogState(() => draftDuties.removeAt(index)),
-                            ),
+                            subtitle: Text('${d['sweeperName']?.toUpperCase()} • ${d['facultyName']?.toUpperCase()}'), // Capitalized matching
+                            trailing: IconButton(icon: const Icon(Icons.remove_circle_outline, color: Colors.red), onPressed: () => setDialogState(() => draftDuties.removeAt(index))),
                           );
                         },
                       ),
                     ),
                     const SizedBox(height: 12),
-                    // Add Custom Duty to Draft
                     TextButton.icon(
                       onPressed: () async {
                         final newDuty = await _showDraftDutyAddDialog();
-                        if (newDuty != null) {
-                          setDialogState(() => draftDuties.add(newDuty));
-                        }
+                        if (newDuty != null) setDialogState(() => draftDuties.add(newDuty));
                       },
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Add Room to Preset'),
+                      icon: const Icon(Icons.add_rounded), label: const Text('Add Room to Preset'),
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -179,19 +164,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             onPressed: () async {
                               if (nameController.text.trim().isEmpty || draftDuties.isEmpty) return;
                               Navigator.pop(context);
-                              
-                              // Save to Local Storage
                               final prefs = await SharedPreferences.getInstance();
                               final String? presetsJson = prefs.getString('saved_presets');
                               List<dynamic> presets = presetsJson != null ? jsonDecode(presetsJson) : [];
-                              
-                              presets.add({
-                                'presetName': nameController.text.trim(),
-                                'duties': draftDuties,
-                              });
-                              
+                              presets.add({'presetName': nameController.text.trim(), 'duties': draftDuties});
                               await prefs.setString('saved_presets', jsonEncode(presets));
-                              if (!mounted) return;
+                              if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Preset saved successfully!'), backgroundColor: Color(0xFF2E7D32)));
                             },
                             child: const Text('Save Preset'),
@@ -209,14 +187,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // Similar to Assign dialog, but strictly returns a Map for the Preset Draft
   Future<Map<String, String>?> _showDraftDutyAddDialog() async {
     List<String> roomOptions = _allDuties.map((d) => d.roomName).toSet().toList();
-    if (roomOptions.isEmpty) { roomOptions = ['Add New Room...']; } else { roomOptions.add('Add New Room...'); }
+    if (roomOptions.isEmpty) { 
+      roomOptions = ['Add New Room...']; 
+    } else { 
+      roomOptions.add('Add New Room...'); 
+    }
+    
     List<String> sweeperOptions = _allDuties.map((d) => d.sweeperName?.toLowerCase() ?? '').where((s) => s.isNotEmpty && s != 'unassigned').toSet().toList();
-    if (sweeperOptions.isEmpty) { sweeperOptions = ['Add New Sweeper...']; } else { sweeperOptions.add('Add New Sweeper...'); }
-    List<String> facultyOptions = _allDuties.map((d) => d.facultyName?.replaceAll('Incharge: ', '') ?? '').where((f) => f.isNotEmpty && f != 'Unassigned').toSet().toList();
-    if (facultyOptions.isEmpty) { facultyOptions = ['Add New Faculty...']; } else { facultyOptions.add('Add New Faculty...'); }
+    if (sweeperOptions.isEmpty) { 
+      sweeperOptions = ['Add New Sweeper...']; 
+    } else { 
+      sweeperOptions.add('Add New Sweeper...'); 
+    }
+    
+    List<String> inchargeOptions = _allDuties.map((d) => d.facultyName?.replaceAll('Incharge: ', '').replaceAll('Prof. ', '') ?? '').where((f) => f.isNotEmpty && f != 'Unassigned').toSet().toList();
+    if (inchargeOptions.isEmpty) { 
+      inchargeOptions = ['Add New Incharge...']; 
+    } else { 
+      inchargeOptions.add('Add New Incharge...'); 
+    }
 
     String selectedRoom = roomOptions.first;
     bool isCustomRoom = selectedRoom == 'Add New Room...';
@@ -224,9 +215,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     String selectedSweeper = sweeperOptions.first;
     bool isCustomSweeper = selectedSweeper == 'Add New Sweeper...';
     final customSweeperController = TextEditingController();
-    String selectedFaculty = facultyOptions.first;
-    bool isCustomFaculty = selectedFaculty == 'Add New Faculty...';
-    final customFacultyController = TextEditingController();
+    String selectedIncharge = inchargeOptions.first;
+    bool isCustomIncharge = selectedIncharge == 'Add New Incharge...';
+    final customInchargeController = TextEditingController();
 
     return showDialog<Map<String, String>>(
       context: context,
@@ -249,8 +240,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       DropdownButtonFormField<String>(initialValue: selectedSweeper, decoration: InputDecoration(labelText: 'Sweeper', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), items: sweeperOptions.map((item) => DropdownMenuItem(value: item, child: Text(item.toUpperCase()))).toList(), onChanged: (v) => setDialogState(() { isCustomSweeper = v == 'Add New Sweeper...'; selectedSweeper = v!; })),
                       if (isCustomSweeper) Padding(padding: const EdgeInsets.only(top: 12), child: TextField(controller: customSweeperController, decoration: InputDecoration(hintText: 'New sweeper name...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)))),
                       const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(initialValue: selectedFaculty, decoration: InputDecoration(labelText: 'Faculty', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), items: facultyOptions.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(), onChanged: (v) => setDialogState(() { isCustomFaculty = v == 'Add New Faculty...'; selectedFaculty = v!; })),
-                      if (isCustomFaculty) Padding(padding: const EdgeInsets.only(top: 12), child: TextField(controller: customFacultyController, decoration: InputDecoration(hintText: 'Faculty name...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)))),
+                      DropdownButtonFormField<String>(initialValue: selectedIncharge, decoration: InputDecoration(labelText: 'Incharge', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), items: inchargeOptions.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(), onChanged: (v) => setDialogState(() { isCustomIncharge = v == 'Add New Incharge...'; selectedIncharge = v!; })),
+                      if (isCustomIncharge) Padding(padding: const EdgeInsets.only(top: 12), child: TextField(controller: customInchargeController, decoration: InputDecoration(hintText: 'Incharge name...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)))),
                       const SizedBox(height: 24),
                       Row(
                         children: [
@@ -261,9 +252,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               onPressed: () {
                                 String r = isCustomRoom ? customRoomController.text.trim() : selectedRoom;
                                 String s = isCustomSweeper ? customSweeperController.text.trim().toLowerCase() : selectedSweeper;
-                                String f = isCustomFaculty ? 'Incharge: ${customFacultyController.text.trim()}' : 'Incharge: $selectedFaculty';
-                                if (r.isEmpty || s.isEmpty || (isCustomFaculty && customFacultyController.text.trim().isEmpty)) return;
-                                Navigator.pop(context, {'roomName': r, 'sweeperName': s, 'facultyName': f});
+                                String i = isCustomIncharge ? customInchargeController.text.trim() : selectedIncharge;
+                                if (r.isEmpty || s.isEmpty || i.isEmpty) return;
+                                Navigator.pop(context, {'roomName': r, 'sweeperName': s, 'facultyName': i}); // Passes raw name
                               },
                               child: const Text('Add'),
                             ),
@@ -287,11 +278,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     List<dynamic> presets = presetsJson != null ? jsonDecode(presetsJson) : [];
 
     if (!mounted) return;
-
-    if (presets.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No presets saved yet!'), backgroundColor: Color(0xFFEF6C00)));
-      return;
-    }
+    if (presets.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No presets saved yet!'), backgroundColor: Color(0xFFEF6C00))); return; }
 
     showDialog(
       context: context,
@@ -319,10 +306,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           title: Text(preset['presetName'], style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text('${(preset['duties'] as List).length} assignments saved'),
                           trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-                          onTap: () {
-                            Navigator.pop(context);
-                            _showPresetDetailsDialog(preset);
-                          },
+                          onTap: () { Navigator.pop(context); _showPresetDetailsDialog(preset); },
                         ),
                       );
                     },
@@ -339,7 +323,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   void _showPresetDetailsDialog(Map<String, dynamic> preset) {
     List<dynamic> duties = preset['duties'];
-
     showDialog(
       context: context,
       builder: (context) {
@@ -364,7 +347,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       return ListTile(
                         dense: true,
                         title: Text(d['roomName'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text('${d['sweeperName'].toUpperCase()} • ${d['facultyName'].replaceAll("Incharge: ", "")}'),
+                        subtitle: Text('${d['sweeperName'].toUpperCase()} • ${d['facultyName'].toUpperCase()}'), // Capitalized matching
                       );
                     },
                   ),
@@ -380,10 +363,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           Navigator.pop(context);
                           setState(() => _isLoading = true);
                           try {
-                            // Run API calls for every duty in the preset
                             await Future.wait(duties.map((d) => ApiService.createDuty(d['roomName'], 'CSE', d['sweeperName'], d['facultyName'])));
                             await _fetchDuties();
-                            if (!mounted) return;
+                            if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Preset deployed successfully!'), backgroundColor: Color(0xFF2E7D32)));
                           } catch (e) {
                             setState(() => _isLoading = false);
@@ -403,10 +385,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // ==========================================
-  // EXISTING METHODS (Reports, Purge, CRUD)
-  // ==========================================
-
   void _showReportSelector(BuildContext context) {
     showModalBottomSheet(
       context: context, backgroundColor: Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
@@ -422,7 +400,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               const SizedBox(height: 24),
               _buildMenuOption(context, title: 'Sweeper Log Report', subtitle: 'Daily attendance & completion stats', icon: Icons.person_search_rounded, color: const Color(0xFF00897B), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => LogReportScreen(duties: _allDuties, reportTitle: 'Sweeper Log', reportType: 'sweeper'))); }),
               const SizedBox(height: 12),
-              _buildMenuOption(context, title: 'Classroom Status Log', subtitle: 'Verification history by faculty', icon: Icons.meeting_room_rounded, color: const Color(0xFFE53935), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => LogReportScreen(duties: _allDuties, reportTitle: 'Classroom Log', reportType: 'classroom'))); }),
+              _buildMenuOption(context, title: 'Classroom Status Log', subtitle: 'Verification history', icon: Icons.meeting_room_rounded, color: const Color(0xFFE53935), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => LogReportScreen(duties: _allDuties, reportTitle: 'Classroom Log', reportType: 'classroom'))); }),
             ],
           ),
         );
@@ -442,17 +420,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
         try {
           final parts = duty.verifiedTime!.split(', ');
           final dateParts = parts[0].split('/');
-          final day = int.parse(dateParts[0]);
-          final month = int.parse(dateParts[1]);
-          final dutyDate = DateTime(DateTime.now().year, month, day);
-
-          if (dutyDate.isBefore(selectedDate) || dutyDate.isAtSameMomentAs(selectedDate)) {
-            await ApiService.deleteDuty(duty.id);
-            deletedCount++;
-          }
-        } catch (e) {
-          debugPrint("Date parse skipped: $e");
-        }
+          final dutyDate = DateTime(DateTime.now().year, int.parse(dateParts[1]), int.parse(dateParts[0]));
+          if (dutyDate.isBefore(selectedDate) || dutyDate.isAtSameMomentAs(selectedDate)) { await ApiService.deleteDuty(duty.id); deletedCount++; }
+        } catch (e) { debugPrint("Date parse skipped: $e"); }
       }
     }
     await _fetchDuties(); 
@@ -463,19 +433,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
   void _showEditAssignmentDialog(Duty duty) {
     List<String> sweeperOptions = _allDuties.map((d) => d.sweeperName?.toLowerCase() ?? '').where((s) => s.isNotEmpty && s != 'unassigned').toSet().toList();
     if (sweeperOptions.isEmpty) { sweeperOptions = ['Add New Sweeper...']; } else { sweeperOptions.add('Add New Sweeper...'); }
-    List<String> facultyOptions = _allDuties.map((d) => d.facultyName?.replaceAll('Incharge: ', '') ?? '').where((f) => f.isNotEmpty && f != 'Unassigned').toSet().toList();
-    if (facultyOptions.isEmpty) { facultyOptions = ['Add New Faculty...']; } else { facultyOptions.add('Add New Faculty...'); }
+    List<String> inchargeOptions = _allDuties.map((d) => d.facultyName?.replaceAll('Incharge: ', '').replaceAll('Prof. ', '') ?? '').where((f) => f.isNotEmpty && f != 'Unassigned').toSet().toList();
+    if (inchargeOptions.isEmpty) { inchargeOptions = ['Add New Incharge...']; } else { inchargeOptions.add('Add New Incharge...'); }
+
     String currentSweeper = duty.sweeperName?.toLowerCase() ?? '';
     if (!sweeperOptions.contains(currentSweeper) && currentSweeper.isNotEmpty) { sweeperOptions.insert(0, currentSweeper); }
     if (currentSweeper.isEmpty || currentSweeper == 'unassigned') { currentSweeper = sweeperOptions.first; }
-    String currentFac = duty.facultyName?.replaceAll('Incharge: ', '') ?? '';
-    if (!facultyOptions.contains(currentFac) && currentFac.isNotEmpty) { facultyOptions.insert(0, currentFac); }
-    if (currentFac.isEmpty || currentFac == 'Unassigned') { currentFac = facultyOptions.first; }
+
+    String currentInc = duty.facultyName?.replaceAll('Incharge: ', '').replaceAll('Prof. ', '') ?? '';
+    if (!inchargeOptions.contains(currentInc) && currentInc.isNotEmpty) { inchargeOptions.insert(0, currentInc); }
+    if (currentInc.isEmpty || currentInc == 'Unassigned') { currentInc = inchargeOptions.first; }
 
     bool isCustomSweeper = currentSweeper == 'Add New Sweeper...';
     final customSweeperController = TextEditingController();
-    bool isCustomFaculty = currentFac == 'Add New Faculty...';
-    final customFacultyController = TextEditingController();
+    bool isCustomIncharge = currentInc == 'Add New Incharge...';
+    final customInchargeController = TextEditingController();
     
     showDialog(
       context: context,
@@ -492,11 +464,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     children: [
                       const Text('Edit Assignment', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 24),
-                      DropdownButtonFormField<String>(initialValue: currentSweeper, decoration: InputDecoration(labelText: 'Reassign Sweeper', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), items: sweeperOptions.map((item) => DropdownMenuItem(value: item, child: Text(item.toUpperCase()))).toList(), onChanged: (v) => setDialogState(() { if (v == 'Add New Sweeper...') { isCustomSweeper = true; } else { isCustomSweeper = false; currentSweeper = v!; } })),
+                      DropdownButtonFormField<String>(initialValue: currentSweeper, decoration: InputDecoration(labelText: 'Reassign Sweeper', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), items: sweeperOptions.map((item) => DropdownMenuItem(value: item, child: Text(item.toUpperCase()))).toList(), onChanged: (value) { setDialogState(() { if (value == 'Add New Sweeper...') { isCustomSweeper = true; } else { isCustomSweeper = false; currentSweeper = value!; } }); }),
                       if (isCustomSweeper) Padding(padding: const EdgeInsets.only(top: 12), child: TextField(controller: customSweeperController, decoration: InputDecoration(hintText: 'Type new sweeper name...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)))),
                       const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(initialValue: currentFac, decoration: InputDecoration(labelText: 'Reassign Faculty', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), items: facultyOptions.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(), onChanged: (v) => setDialogState(() { if (v == 'Add New Faculty...') { isCustomFaculty = true; } else { isCustomFaculty = false; currentFac = v!; } })),
-                      if (isCustomFaculty) Padding(padding: const EdgeInsets.only(top: 12), child: TextField(controller: customFacultyController, decoration: InputDecoration(hintText: 'Type faculty name...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)))),
+                      DropdownButtonFormField<String>(initialValue: currentInc, decoration: InputDecoration(labelText: 'Reassign Incharge', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), items: inchargeOptions.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(), onChanged: (value) { setDialogState(() { if (value == 'Add New Incharge...') { isCustomIncharge = true; } else { isCustomIncharge = false; currentInc = value!; } }); }),
+                      if (isCustomIncharge) Padding(padding: const EdgeInsets.only(top: 12), child: TextField(controller: customInchargeController, decoration: InputDecoration(hintText: 'Type incharge name...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)))),
                       const SizedBox(height: 28),
                       Row(
                         children: [
@@ -506,11 +478,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3949AB), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
                               onPressed: () async {
                                 String finalSweeper = isCustomSweeper ? customSweeperController.text.trim().toLowerCase() : currentSweeper;
-                                String finalFac = isCustomFaculty ? 'Incharge: ${customFacultyController.text.trim()}' : 'Incharge: $currentFac';
-                                if (finalSweeper.isEmpty || (isCustomFaculty && customFacultyController.text.trim().isEmpty)) return;
+                                String finalInc = isCustomIncharge ? customInchargeController.text.trim() : currentInc; // Raw Name Used!
+                                if (finalSweeper.isEmpty || (isCustomIncharge && customInchargeController.text.trim().isEmpty)) return;
                                 Navigator.pop(context);
                                 setState(() => _isLoading = true);
-                                try { await ApiService.updateAssignment(duty.id, finalSweeper, finalFac); await _fetchDuties(); } catch (e) { debugPrint("Update failed: $e"); setState(() => _isLoading = false); }
+                                try { await ApiService.updateAssignment(duty.id, finalSweeper, finalInc); await _fetchDuties(); } catch (e) { debugPrint("Update failed: $e"); setState(() => _isLoading = false); }
                               },
                               child: const Text('Update'),
                             ),
@@ -533,17 +505,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (roomOptions.isEmpty) { roomOptions = ['Add New Room...']; } else { roomOptions.add('Add New Room...'); }
     List<String> sweeperOptions = _allDuties.map((d) => d.sweeperName?.toLowerCase() ?? '').where((s) => s.isNotEmpty && s != 'unassigned').toSet().toList();
     if (sweeperOptions.isEmpty) { sweeperOptions = ['Add New Sweeper...']; } else { sweeperOptions.add('Add New Sweeper...'); }
-    List<String> facultyOptions = _allDuties.map((d) => d.facultyName?.replaceAll('Incharge: ', '') ?? '').where((f) => f.isNotEmpty && f != 'Unassigned').toSet().toList();
-    if (facultyOptions.isEmpty) { facultyOptions = ['Add New Faculty...']; } else { facultyOptions.add('Add New Faculty...'); }
+    List<String> inchargeOptions = _allDuties.map((d) => d.facultyName?.replaceAll('Incharge: ', '').replaceAll('Prof. ', '') ?? '').where((f) => f.isNotEmpty && f != 'Unassigned').toSet().toList();
+    if (inchargeOptions.isEmpty) { inchargeOptions = ['Add New Incharge...']; } else { inchargeOptions.add('Add New Incharge...'); }
+
     String selectedRoom = roomOptions.first;
     bool isCustomRoom = selectedRoom == 'Add New Room...';
     final customRoomController = TextEditingController();
+    
     String selectedSweeper = sweeperOptions.first;
     bool isCustomSweeper = selectedSweeper == 'Add New Sweeper...';
     final customSweeperController = TextEditingController();
-    String selectedFaculty = facultyOptions.first;
-    bool isCustomFaculty = selectedFaculty == 'Add New Faculty...';
-    final customFacultyController = TextEditingController();
+    
+    String selectedIncharge = inchargeOptions.first;
+    bool isCustomIncharge = selectedIncharge == 'Add New Incharge...';
+    final customInchargeController = TextEditingController();
 
     showDialog(
       context: context,
@@ -561,14 +536,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     children: [
                       const Row(children: [Icon(Icons.add_task_rounded, color: Color(0xFF3949AB), size: 28), SizedBox(width: 12), Text('Assign New Duty', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))]),
                       const SizedBox(height: 24),
-                      DropdownButtonFormField<String>(initialValue: selectedRoom, decoration: InputDecoration(labelText: 'Select Room', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), items: roomOptions.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(), onChanged: (v) => setDialogState(() { if (v == 'Add New Room...') { isCustomRoom = true; } else { isCustomRoom = false; selectedRoom = v!; } })),
+                      DropdownButtonFormField<String>(initialValue: selectedRoom, decoration: InputDecoration(labelText: 'Select Room', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), items: roomOptions.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(), onChanged: (v) { setDialogState(() { if (v == 'Add New Room...') { isCustomRoom = true; } else { isCustomRoom = false; selectedRoom = v!; } }); }),
                       if (isCustomRoom) Padding(padding: const EdgeInsets.only(top: 12), child: TextField(controller: customRoomController, decoration: InputDecoration(hintText: 'Type custom room name...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)))),
                       const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(initialValue: selectedSweeper, decoration: InputDecoration(labelText: 'Assign Sweeper', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), items: sweeperOptions.map((item) => DropdownMenuItem(value: item, child: Text(item.toUpperCase()))).toList(), onChanged: (v) => setDialogState(() { if (v == 'Add New Sweeper...') { isCustomSweeper = true; } else { isCustomSweeper = false; selectedSweeper = v!; } })),
+                      DropdownButtonFormField<String>(initialValue: selectedSweeper, decoration: InputDecoration(labelText: 'Assign Sweeper', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), items: sweeperOptions.map((item) => DropdownMenuItem(value: item, child: Text(item.toUpperCase()))).toList(), onChanged: (v) { setDialogState(() { if (v == 'Add New Sweeper...') { isCustomSweeper = true; } else { isCustomSweeper = false; selectedSweeper = v!; } }); }),
                       if (isCustomSweeper) Padding(padding: const EdgeInsets.only(top: 12), child: TextField(controller: customSweeperController, decoration: InputDecoration(hintText: 'Type new sweeper name...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)))),
                       const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(initialValue: selectedFaculty, decoration: InputDecoration(labelText: 'Assign Faculty', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), items: facultyOptions.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(), onChanged: (v) => setDialogState(() { if (v == 'Add New Faculty...') { isCustomFaculty = true; } else { isCustomFaculty = false; selectedFaculty = v!; } })),
-                      if (isCustomFaculty) Padding(padding: const EdgeInsets.only(top: 12), child: TextField(controller: customFacultyController, decoration: InputDecoration(hintText: 'Type faculty name...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)))),
+                      DropdownButtonFormField<String>(initialValue: selectedIncharge, decoration: InputDecoration(labelText: 'Assign Incharge', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)), items: inchargeOptions.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(), onChanged: (v) { setDialogState(() { if (v == 'Add New Incharge...') { isCustomIncharge = true; } else { isCustomIncharge = false; selectedIncharge = v!; } }); }),
+                      if (isCustomIncharge) Padding(padding: const EdgeInsets.only(top: 12), child: TextField(controller: customInchargeController, decoration: InputDecoration(hintText: 'Type incharge name...', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)))),
                       const SizedBox(height: 28),
                       Row(
                         children: [
@@ -579,11 +554,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               onPressed: () async {
                                 String finalRoom = isCustomRoom ? customRoomController.text.trim() : selectedRoom;
                                 String finalSweeper = isCustomSweeper ? customSweeperController.text.trim().toLowerCase() : selectedSweeper;
-                                String finalFac = isCustomFaculty ? 'Incharge: ${customFacultyController.text.trim()}' : 'Incharge: $selectedFaculty';
-                                if (finalRoom.isEmpty || finalSweeper.isEmpty || (isCustomFaculty && customFacultyController.text.trim().isEmpty)) return;
+                                String finalInc = isCustomIncharge ? customInchargeController.text.trim() : selectedIncharge; // Raw Name Used!
+                                
+                                if (finalRoom.isEmpty || finalSweeper.isEmpty || (isCustomIncharge && customInchargeController.text.trim().isEmpty)) return;
+                                
                                 Navigator.pop(context);
                                 setState(() => _isLoading = true);
-                                try { await ApiService.createDuty(finalRoom, 'CSE', finalSweeper, finalFac); await _fetchDuties(); } catch (e) { debugPrint("Creation failed: $e"); setState(() => _isLoading = false); }
+                                try { await ApiService.createDuty(finalRoom, 'CSE', finalSweeper, finalInc); await _fetchDuties(); } catch (e) { debugPrint("Creation failed: $e"); setState(() => _isLoading = false); }
                               },
                               child: const Text('Assign', style: TextStyle(fontWeight: FontWeight.w700)),
                             ),
@@ -601,10 +578,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // ==========================================
-  // UI BUILD
-  // ==========================================
-  
   @override
   Widget build(BuildContext context) {
     int pendingCount = _allDuties.where((d) => d.status == DutyStatus.pending).length;
@@ -641,22 +614,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
           
-          // ACTION BUTTONS: REPORTS, PRESETS, PURGE
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Row(
               children: [
-                Expanded(
-                  child: _ActionCard(title: 'Reports', icon: Icons.picture_as_pdf_rounded, color: const Color(0xFF1976D2), onTap: () => _showReportSelector(context)),
-                ),
+                Expanded(child: _ActionCard(title: 'Reports', icon: Icons.picture_as_pdf_rounded, color: const Color(0xFF1976D2), onTap: () => _showReportSelector(context))),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: _ActionCard(title: 'Presets', icon: Icons.bookmark_added_rounded, color: const Color(0xFF8E24AA), onTap: () => _showPresetsMenu(context)),
-                ),
+                Expanded(child: _ActionCard(title: 'Presets', icon: Icons.bookmark_added_rounded, color: const Color(0xFF8E24AA), onTap: () => _showPresetsMenu(context))),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: _ActionCard(title: 'Purge', icon: Icons.auto_delete_rounded, color: const Color(0xFFD32F2F), onTap: _bulkDeleteLogs),
-                ),
+                Expanded(child: _ActionCard(title: 'Purge', icon: Icons.auto_delete_rounded, color: const Color(0xFFD32F2F), onTap: _bulkDeleteLogs)),
               ],
             ),
           ),
@@ -667,9 +633,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _buildFilterChip('All'), _buildFilterChip('Pending'), _buildFilterChip('Check'), _buildFilterChip('Verified'),
-              ],
+              children: [_buildFilterChip('All'), _buildFilterChip('Pending'), _buildFilterChip('Check'), _buildFilterChip('Verified')],
             ),
           ),
           const SizedBox(height: 12),
@@ -685,6 +649,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     itemBuilder: (context, index) {
                       final duty = filteredDuties[index]; 
                       final color = _getStatusColor(duty.status);
+                      
+                      // Safely cleans up any old database records for the UI view
+                      String cleanIncharge = duty.facultyName?.replaceAll("Incharge: ", "").replaceAll("Prof. ", "") ?? "UNASSIGNED";
+
                       return Container(
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -696,7 +664,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                               Text(duty.roomName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5)), 
                               const SizedBox(height: 2), 
-                              Text('Sweeper: ${duty.sweeperName?.toUpperCase() ?? "Unassigned"} • ${duty.facultyName?.replaceAll("Incharge: ", "") ?? "Unassigned"}', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600))
+                              Text('Sweeper: ${duty.sweeperName?.toUpperCase() ?? "UNASSIGNED"} • ${cleanIncharge.toUpperCase()}', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600))
                             ])),
                             Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)), child: Text(duty.status.name.toUpperCase(), style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w800))),
                             
@@ -729,7 +697,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 }
 
-// Reusable Button Card for Actions
 class _ActionCard extends StatelessWidget {
   final String title;
   final IconData icon;
