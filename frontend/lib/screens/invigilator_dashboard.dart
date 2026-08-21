@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/duty_model.dart';
 import '../widgets/verification_card.dart';
 import '../services/api_service.dart';
+import 'package:shimmer/shimmer.dart';
 
 class InvigilatorDashboard extends StatefulWidget {
   final String facultyName; // <-- Accepts the name from the login screen!
@@ -68,6 +69,7 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
   void _rejectTask(String dutyId) {
     final reasonController = TextEditingController();
     String? selectedReason; 
+    final messenger = ScaffoldMessenger.of(context);
     
     final predefinedReasons = [
       'Dust on windows/desks',
@@ -79,9 +81,9 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (dialogContext, setDialogState) {
             return Dialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               child: Padding(
@@ -140,7 +142,7 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
                     const SizedBox(height: 22),
                     Row(
                       children: [
-                        Expanded(child: TextButton(onPressed: () => Navigator.pop(context), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: const Text('Cancel'))),
+                        Expanded(child: TextButton(onPressed: () => Navigator.pop(dialogContext), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: const Text('Cancel'))),
                         const SizedBox(width: 12),
                         Expanded(
                           child: ElevatedButton(
@@ -153,17 +155,17 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
                               }
 
                               if (finalReason.isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Please select or type a reason.'), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
+                                ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: const Text('Please select or type a reason.'), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
                                 return;
                               }
                               
-                              Navigator.pop(context); 
+                              Navigator.pop(dialogContext); 
                               setState(() => _pendingVerifications.removeWhere((duty) => duty.id == dutyId));
                               
                               try {
                                 await ApiService.updateStatus(dutyId, DutyStatus.rejected, rejectionReason: finalReason);
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Task Rejected. Sweeper notified.'), backgroundColor: const Color(0xFFC62828), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), margin: const EdgeInsets.all(16)));
+                                if (!mounted) return;
+                                messenger.showSnackBar(SnackBar(content: const Text('Task Rejected. Sweeper notified.'), backgroundColor: const Color(0xFFC62828), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), margin: const EdgeInsets.all(16)));
                               } catch (e) {
                                 debugPrint("Rejection failed: $e");
                                 _fetchVerifications();
@@ -189,6 +191,29 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
     Navigator.pushReplacementNamed(context, '/');
   }
 
+  // --- PREMIUM UX: SHIMMER LOADING EFFECT ---
+  Widget _buildShimmerLoading() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 6,
+      itemBuilder: (context, index) {
+        return Shimmer.fromColors(
+          baseColor: Colors.grey.shade300,
+          highlightColor: Colors.grey.shade100,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            height: 90, // Standard card height
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -209,13 +234,22 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
           const SizedBox(width: 4),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF3949AB)))
-          : AnimatedSwitcher(
-              duration: const Duration(milliseconds: 350),
-              child: _pendingVerifications.isEmpty
-                  ? const _AllCaughtUpState(key: ValueKey('empty'))
+      body: _isLoading 
+          ? _buildShimmerLoading() 
+          : RefreshIndicator(
+              onRefresh: _fetchVerifications, 
+              color: const Color(0xFF3949AB),
+              backgroundColor: Colors.white,
+              child: _pendingVerifications.isEmpty 
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(height: 40),
+                        _AllCaughtUpState(),
+                      ],
+                    )
                   : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(), // <-- Added this!
                       key: const ValueKey('list'),
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                       itemCount: _pendingVerifications.length,
@@ -237,7 +271,7 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
 }
 
 class _AllCaughtUpState extends StatelessWidget {
-  const _AllCaughtUpState({super.key});
+  const _AllCaughtUpState();
 
   @override
   Widget build(BuildContext context) {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/duty_model.dart';
 import '../widgets/room_card.dart';
 import '../services/api_service.dart';
+import 'package:shimmer/shimmer.dart';
 
 class SweeperDashboard extends StatefulWidget {
   final String sweeperName; // <-- Accepts the name from the login screen!
@@ -53,6 +54,33 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
     Navigator.pushReplacementNamed(context, '/');
   }
 
+  // --- PREMIUM UX: SHIMMER LOADING EFFECT ---
+  Widget _buildShimmerLoading() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          Container(
+            height: 160,
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+          ),
+          const SizedBox(height: 20),
+          ...List.generate(
+            4,
+            (index) => Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              height: 90,
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // --- UI BUILDER ---
   @override
   Widget build(BuildContext context) {
@@ -96,30 +124,43 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
       ),
       // THE LOADING CHECK: Show spinner if fetching, otherwise show the UI
       body: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFFEF6C00)),
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildProgressHeader(completedDuties, totalDuties, progress),
-                Expanded(
-                  child: duties.isEmpty // Check live data
-                      ? _EmptyState(isTamil: _isTamil)
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                          itemCount: duties.length, // Check live data
-                          itemBuilder: (context, index) {
-                            final duty = duties[index]; // Get live data
-                            return RoomCard(
-                              duty: duty,
-                              onComplete: () => _markAsCompleted(duty),
-                              isTamil: _isTamil,
-                            );
-                          },
-                        ),
-                ),
-              ],
+          ? _buildShimmerLoading() // Upgraded from CircularProgressIndicator!
+          : RefreshIndicator(
+              onRefresh: _fetchDuties, // Pull down to refresh!
+              color: const Color(0xFFEF6C00),
+              backgroundColor: Colors.white,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildProgressHeader(completedDuties, totalDuties, progress),
+                  Expanded(
+                    child: duties.isEmpty
+                        ? ListView(
+                            // Makes empty state scrollable so pull-to-refresh works when empty
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(
+                                height: MediaQuery.of(context).size.height * 0.5,
+                                child: _EmptyState(isTamil: _isTamil),
+                              ),
+                            ],
+                          )
+                        : ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(), // Required for pull-to-refresh
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                            itemCount: duties.length,
+                            itemBuilder: (context, index) {
+                              final duty = duties[index];
+                              return RoomCard(
+                                duty: duty,
+                                onComplete: () => _markAsCompleted(duty),
+                                isTamil: _isTamil,
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
             ),
     );
   }
