@@ -1,4 +1,4 @@
-package com.yourpackage.model; // Change to match your actual package name
+package com.example.model;
 
 public enum DutyStatus {
     PENDING,
