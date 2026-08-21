@@ -33,7 +33,7 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
         isLoading = false;
       });
     } catch (e) {
-      print(e);
+      debugPrint(e.toString());
       setState(() => isLoading = false);
     }
   }
@@ -44,7 +44,7 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
       await ApiService.updateStatus(duty.id, DutyStatus.completed);
     } catch (e) {
       setState(() => duty.status = DutyStatus.pending);
-      print("Failed to update: $e");
+      debugPrint("Failed to update: $e");
     }
   }
 

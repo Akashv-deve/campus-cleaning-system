@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../models/duty_model.dart';
 import 'incharge_allotment_screen.dart';
+import '../services/api_service.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -34,7 +35,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         _isLoading = false;
       });
     } catch (e) {
-      print("Error fetching duties: $e");
+      debugPrint("Error fetching duties: $e");
       setState(() => _isLoading = false);
     }
   }
@@ -176,7 +177,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   // 2. Fetch the updated list so it includes the real MongoDB ID
                                   await _fetchDuties();
                                 } catch (e) {
-                                  print("Creation failed: $e");
+                                  debugPrint("Creation failed: $e");
                                   setState(() => _isLoading = false);
                                 }
                               },

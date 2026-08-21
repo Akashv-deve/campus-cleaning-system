@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../models/duty_model.dart';
 import '../widgets/verification_card.dart';
+import '../services/api_service.dart';
 
 class InvigilatorDashboard extends StatefulWidget {
   const InvigilatorDashboard({super.key});
@@ -11,26 +12,55 @@ class InvigilatorDashboard extends StatefulWidget {
 }
 
 class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
-  // CSE-ONLY MOCK DATA
-  final List<Duty> _pendingVerifications = [
-    Duty(id: '1', roomName: 'CSE Lab 1', department: 'CSE Dept', status: DutyStatus.completed),
-    Duty(id: '2', roomName: 'IoT Lab', department: 'CSE Dept', status: DutyStatus.completed),
-    Duty(id: '3', roomName: 'Classroom 301', department: 'CSE Dept', status: DutyStatus.completed),
-  ];
+  // --- STATE VARIABLES ---
+  List<Duty> _pendingVerifications = []; // Starts empty!
+  bool _isLoading = true;
 
-  void _verifyTask(String dutyId) {
-    setState(() {
-      _pendingVerifications.removeWhere((duty) => duty.id == dutyId);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Room Verified Successfully!'),
-        backgroundColor: const Color(0xFF2E7D32),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _fetchVerifications();
+  }
+
+  // --- API FUNCTIONS ---
+  Future<void> _fetchVerifications() async {
+    try {
+      // Fetch all CSE duties
+      final allDuties = await ApiService.getDutiesByDepartment('CSE');
+      setState(() {
+        // The Faculty ONLY cares about rooms the Sweeper has marked as 'completed'
+        _pendingVerifications = allDuties.where((d) => d.status == DutyStatus.completed).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Error fetching verifications: $e");
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _verifyTask(String dutyId) async {
+    // Optimistic UI update for a snappy feel
+    setState(() => _pendingVerifications.removeWhere((duty) => duty.id == dutyId));
+    
+    try {
+      // Tell MongoDB it is verified!
+      await ApiService.updateStatus(dutyId, DutyStatus.verified);
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Room Verified Successfully!'),
+          backgroundColor: const Color(0xFF2E7D32),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+    } catch (e) {
+      debugPrint("Verification failed: $e");
+      // If it fails, refresh the list from the server
+      _fetchVerifications(); 
+    }
   }
 
   void _rejectTask(String dutyId) {
@@ -39,6 +69,7 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
     showDialog(
       context: context,
       builder: (context) {
+        // ... (Keep your exact same Dialog UI code here!) ...
         return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           child: Padding(
@@ -49,86 +80,48 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
               children: [
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFEBEE),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(Icons.close_rounded, color: Color(0xFFC62828)),
-                    ),
+                    Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFFFEBEE), borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.close_rounded, color: Color(0xFFC62828))),
                     const SizedBox(width: 14),
-                    const Expanded(
-                      child: Text(
-                        'Reject Cleaning',
-                        style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
-                      ),
-                    ),
+                    const Expanded(child: Text('Reject Cleaning', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
                   ],
                 ),
                 const SizedBox(height: 20),
                 TextField(
                   controller: reasonController,
                   maxLines: 3,
-                  decoration: InputDecoration(
-                    hintText: 'e.g., Dust on windows',
-                    filled: true,
-                    fillColor: const Color(0xFFF7F7FA),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.all(16),
-                  ),
+                  decoration: InputDecoration(hintText: 'e.g., Dust on windows', filled: true, fillColor: const Color(0xFFF7F7FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none), contentPadding: const EdgeInsets.all(16)),
                 ),
                 const SizedBox(height: 22),
                 Row(
                   children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        ),
-                        child: const Text('Cancel'),
-                      ),
-                    ),
+                    Expanded(child: TextButton(onPressed: () => Navigator.pop(context), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: const Text('Cancel'))),
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           if (reasonController.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text('Reason is required to reject.'),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                            );
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Reason is required to reject.'), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
                             return;
                           }
-                          Navigator.pop(context);
-                          setState(() {
-                            _pendingVerifications.removeWhere((duty) => duty.id == dutyId);
-                          });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text('Task Rejected. Sweeper notified.'),
-                              backgroundColor: const Color(0xFFC62828),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              margin: const EdgeInsets.all(16),
-                            ),
-                          );
+                          Navigator.pop(context); // Close dialog immediately
+                          
+                          final reason = reasonController.text.trim();
+                          
+                          // Optimistic UI removal
+                          setState(() => _pendingVerifications.removeWhere((duty) => duty.id == dutyId));
+                          
+                          try {
+                            // Tell MongoDB it is rejected and pass the reason!
+                            await ApiService.updateStatus(dutyId, DutyStatus.rejected, rejectionReason: reason);
+                            
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Task Rejected. Sweeper notified.'), backgroundColor: const Color(0xFFC62828), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), margin: const EdgeInsets.all(16)));
+                          } catch (e) {
+                            debugPrint("Rejection failed: $e");
+                            _fetchVerifications();
+                          }
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFC62828),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFC62828), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
                         child: const Text('Submit'),
                       ),
                     ),
@@ -166,7 +159,9 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
           const SizedBox(width: 4),
         ],
       ),
-      body: AnimatedSwitcher(
+      body: _isLoading 
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF3949AB)))
+          : AnimatedSwitcher(
         duration: const Duration(milliseconds: 350),
         child: _pendingVerifications.isEmpty
             ? const _AllCaughtUpState(key: ValueKey('empty'))
