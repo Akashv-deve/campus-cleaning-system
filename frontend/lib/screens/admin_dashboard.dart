@@ -250,7 +250,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
             child: InkWell(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const InchargeAllotmentScreen())),
+              onTap: () async {
+              await Navigator.push(context, MaterialPageRoute(builder: (context) => const InchargeAllotmentScreen()));
+              // This runs the moment you hit the 'back' arrow from the Faculty screen!
+              _fetchDuties(); 
+            },
               borderRadius: BorderRadius.circular(18),
               child: Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFF3949AB).withValues(alpha: 0.15)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))]), child: Row(children: [Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFF3949AB).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.manage_accounts_rounded, color: Color(0xFF3949AB))), const SizedBox(width: 16), const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Manage Faculty Incharge', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)), Text('Allot professors to verify rooms', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500))])), const Icon(Icons.chevron_right_rounded, color: Colors.grey)])),
             ),

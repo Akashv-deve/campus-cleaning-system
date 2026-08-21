@@ -308,7 +308,14 @@ class _InchargeAllotmentScreenState extends State<InchargeAllotmentScreen> {
                                         children: [
                                           Text(duty.roomName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5)),
                                           const SizedBox(height: 2),
-                                          Text(duty.department, style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+                                          Text(
+                                            duty.facultyName != null ? 'Incharge: ${duty.facultyName}' : 'Pending Allotment', 
+                                            style: TextStyle(
+                                              fontSize: 13, 
+                                              color: duty.facultyName != null ? Colors.purple.shade700 : Colors.grey.shade600, 
+                                              fontWeight: FontWeight.w600
+                                            )
+                                          ),
                                         ],
                                       ),
                                     ),
