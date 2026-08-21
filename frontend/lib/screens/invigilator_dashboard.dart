@@ -198,7 +198,7 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         title: Text(
-          'Verify: ${widget.facultyName.toUpperCase()}',
+          'Verify: PROF. ${widget.facultyName.toUpperCase()}',
           style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87, fontSize: 20),
         ),
         actions: [

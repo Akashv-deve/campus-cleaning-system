@@ -45,16 +45,17 @@ class _LoginScreenState extends State<LoginScreen> {
     } 
     // 2. Faculty Login (If they use the 1234 PIN, they are faculty!)
     else if (password == '1234') {
-      // Auto-formats the name to match the DB format just in case they forget "Prof."
-      String formattedName = username.toLowerCase().startsWith('prof') 
-          ? username 
-          : 'Prof. $username';
+      // Strip out "prof" from the login name so the database filter matches the raw name perfectly
+      String cleanName = username.toLowerCase()
+          .replaceAll('prof.', '')
+          .replaceAll('prof', '')
+          .trim();
           
       Navigator.pushReplacement(
         context, 
-        MaterialPageRoute(builder: (context) => InvigilatorDashboard(facultyName: formattedName))
+        MaterialPageRoute(builder: (context) => InvigilatorDashboard(facultyName: cleanName))
       );
-    } 
+    }
     // 3. Sweeper Login (If the password is blank, they are a sweeper!)
     else if (password.isEmpty) {
       Navigator.pushReplacement(
