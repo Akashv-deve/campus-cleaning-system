@@ -5,7 +5,7 @@ import '../models/duty_model.dart';
 class ApiService {
   // IMPORTANT: 10.0.2.2 is how the Android Emulator connects to your PC's localhost!
   // (If you are using a real phone plugged in via USB, you must use your PC's actual Wi-Fi IP address instead).
-  static const String baseUrl = 'http://10.0.2.2:8080/api/duties';
+  static const String baseUrl = 'http://localhost:8080/api/duties';
 
   // 1. Fetch duties for the Sweeper/Invigilator
   static Future<List<Duty>> getDutiesByDepartment(String department) async {

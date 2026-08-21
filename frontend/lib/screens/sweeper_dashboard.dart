@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../models/duty_model.dart';
 import '../widgets/room_card.dart';
+import '../services/api_service.dart';
 
 class SweeperDashboard extends StatefulWidget {
   const SweeperDashboard({super.key});
@@ -11,51 +12,52 @@ class SweeperDashboard extends StatefulWidget {
 }
 
 class _SweeperDashboardState extends State<SweeperDashboard> {
-  // NEW: Language Toggle State
+  // --- STATE VARIABLES ---
   bool _isTamil = false;
+  List<Duty> duties = []; // <-- Our live data list
+  bool isLoading = true;  // <-- Loading flag
 
-  final List<Duty> _assignedDuties = [
-    Duty(id: '1', roomName: 'CSE Lab 1', department: 'CSE Dept'),
-    Duty(id: '2', roomName: 'CSE Lab 2', department: 'CSE Dept'),
-    Duty(
-      id: '3',
-      roomName: 'IoT Lab',
-      department: 'CSE Dept',
-      status: DutyStatus.rejected,
-      rejectionReason: 'Dust found on the monitors and keyboards.',
-    ),
-    Duty(id: '4', roomName: 'HOD Cabin', department: 'CSE Dept', status: DutyStatus.completed),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchDuties();
+  }
 
-  void _markAsCompleted(String dutyId) {
-    setState(() {
-      final dutyIndex = _assignedDuties.indexWhere((d) => d.id == dutyId);
-      if (dutyIndex != -1) {
-        _assignedDuties[dutyIndex].status = DutyStatus.completed;
-      }
-    });
+  // --- API FUNCTIONS ---
+  Future<void> _fetchDuties() async {
+    try {
+      // Assuming this sweeper is assigned to the CSE Dept for now
+      final fetchedDuties = await ApiService.getDutiesByDepartment('CSE');
+      setState(() {
+        duties = fetchedDuties;
+        isLoading = false;
+      });
+    } catch (e) {
+      print(e);
+      setState(() => isLoading = false);
+    }
+  }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _isTamil ? 'வேலை முடிந்தது. செக்கிங்கிற்கு காத்திருக்கிறது.' : 'Room marked as completed. Waiting for verification.',
-          style: const TextStyle(fontSize: 16),
-        ),
-        backgroundColor: const Color(0xFF2E7D32),
-        behavior: SnackBarBehavior.floating,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      ),
-    );
+  Future<void> _markAsCompleted(Duty duty) async {
+    try {
+      setState(() => duty.status = DutyStatus.completed);
+      await ApiService.updateStatus(duty.id, DutyStatus.completed);
+    } catch (e) {
+      setState(() => duty.status = DutyStatus.pending);
+      print("Failed to update: $e");
+    }
   }
 
   void _logout() {
     Navigator.pushReplacementNamed(context, '/');
   }
 
+  // --- UI BUILDER ---
   @override
   Widget build(BuildContext context) {
-    final int totalDuties = _assignedDuties.length;
-    final int completedDuties = _assignedDuties.where((d) => d.status == DutyStatus.completed || d.status == DutyStatus.verified).length;
+    // Now using our live 'duties' list instead of the mock list!
+    final int totalDuties = duties.length;
+    final int completedDuties = duties.where((d) => d.status == DutyStatus.completed || d.status == DutyStatus.verified).length;
     final double progress = totalDuties == 0 ? 0 : completedDuties / totalDuties;
 
     return Scaffold(
@@ -66,16 +68,11 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
         elevation: 0,
         title: Text(
           _isTamil ? 'இன்றைய வேலைகள்' : 'My Duties Today',
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white), // Explicit color needed for Google Fonts override
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white), 
         ),
         actions: [
-          // NEW: Language Toggle Button
           TextButton(
-            onPressed: () {
-              setState(() {
-                _isTamil = !_isTamil;
-              });
-            },
+            onPressed: () => setState(() => _isTamil = !_isTamil),
             style: TextButton.styleFrom(
               backgroundColor: Colors.white.withValues(alpha: 0.15),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -96,35 +93,39 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
           const SizedBox(width: 8),
         ],
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildProgressHeader(completedDuties, totalDuties, progress),
-          Expanded(
-            child: _assignedDuties.isEmpty
-                ? _EmptyState(isTamil: _isTamil)
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    itemCount: _assignedDuties.length,
-                    itemBuilder: (context, index) {
-                      final duty = _assignedDuties[index];
-                      return RoomCard(
-                        duty: duty,
-                        onComplete: () => _markAsCompleted(duty.id),
-                        isTamil: _isTamil, // Pass the state to the card
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
+      // THE LOADING CHECK: Show spinner if fetching, otherwise show the UI
+      body: isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFFEF6C00)),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildProgressHeader(completedDuties, totalDuties, progress),
+                Expanded(
+                  child: duties.isEmpty // Check live data
+                      ? _EmptyState(isTamil: _isTamil)
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                          itemCount: duties.length, // Check live data
+                          itemBuilder: (context, index) {
+                            final duty = duties[index]; // Get live data
+                            return RoomCard(
+                              duty: duty,
+                              onComplete: () => _markAsCompleted(duty),
+                              isTamil: _isTamil,
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
     );
   }
 
   Widget _buildProgressHeader(int completed, int total, double progress) {
     final bool allDone = total > 0 && completed == total;
     
-    // Translations for progress messages
     final String message;
     if (allDone) {
       message = _isTamil ? "🎉 அருமை! எல்லாம் முடிந்தது!" : "🎉 Amazing! All rooms done!";
