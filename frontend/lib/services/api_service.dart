@@ -69,8 +69,10 @@ class ApiService {
         }),
       );
 
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('Failed to create duty');
+      if (response.statusCode == 409) {
+        throw Exception('This room is already assigned!');
+      } else if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Failed to create duty'); // Existing block[cite: 2]
       }
     } catch (e) {
       throw Exception('Error creating duty: $e');

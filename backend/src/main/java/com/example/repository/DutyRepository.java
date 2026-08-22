@@ -11,4 +11,5 @@ public interface DutyRepository extends MongoRepository<Duty, String> {
     
     // Spring automatically generates the database query for this just by reading the name!
     List<Duty> findByDepartment(String department);
+    boolean existsByRoomName(String roomName);
 }

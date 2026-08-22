@@ -9,5 +9,10 @@ RUN mvn clean package -DskipTests
 FROM openjdk:17.0.1-jdk-slim
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
+
+# Create a non-root user named "springuser" and switch to it
+RUN useradd -m springuser
+USER springuser
+
 # The -Xmx300m flag strictly limits Java to 300MB RAM so Render doesn't crash it.
 ENTRYPOINT ["java", "-Xmx300m", "-jar", "app.jar"]

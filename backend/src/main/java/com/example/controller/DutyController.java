@@ -1,15 +1,26 @@
 package com.example.controller;
 
-import com.example.model.Duty;
-import com.example.model.DutyStatus;
-import com.example.service.DutyService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.example.model.Duty;
+import com.example.model.DutyStatus;
+import com.example.repository.DutyRepository;
+import com.example.service.DutyService;
+
+import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/duties")
 @CrossOrigin(origins = "*") // Crucial: Allows your Flutter emulator to talk to the backend
@@ -17,6 +28,7 @@ import java.util.Map;
 public class DutyController {
 
     private final DutyService dutyService;
+    private final DutyRepository dutyRepository;
 
     // 1. Get duties for a specific department (For Sweeper & Invigilator Dashboards)
     @GetMapping("/department/{department}")
@@ -46,7 +58,12 @@ public class DutyController {
     
     // 4. (Admin) Create a new duty assignment
     @PostMapping
-    public ResponseEntity<Duty> createDuty(@RequestBody Duty duty) {
+    public ResponseEntity<?> createDuty(@RequestBody Duty duty) {
+    if (dutyRepository.existsByRoomName(duty.getRoomName())) {
+        // Rejects the request before it even reaches your DutyService
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body("This room is already assigned!");
+        }
         return ResponseEntity.ok(dutyService.createDuty(duty));
     }
     // 5. (Admin) Allot a faculty member to an existing duty
