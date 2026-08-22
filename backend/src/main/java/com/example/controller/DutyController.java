@@ -20,7 +20,7 @@ import com.example.model.DutyStatus;
 import com.example.repository.DutyRepository;
 import com.example.service.DutyService;
 
-import lombok.RequiredArgsConstructor;
+import lombok.RequiredArgsConstructor; // <-- ADD THIS IMPORT
 @RestController
 @RequestMapping("/api/duties")
 @CrossOrigin(origins = "*") // Crucial: Allows your Flutter emulator to talk to the backend
@@ -57,17 +57,17 @@ public class DutyController {
     }
     
     // 4. (Admin) Create a new duty assignment
-    @PostMapping
-    public ResponseEntity<?> createDuty(@RequestBody Duty duty) {
-        // Check if the room already has a Pending or Completed task
-        boolean hasActiveDuty = dutyRepository.existsByRoomNameAndStatusNot(duty.getRoomName(), DutyStatus.verified);
-        
-        if (hasActiveDuty) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body("This room already has an active duty pending verification!");
-        }
-        return ResponseEntity.ok(dutyService.createDuty(duty));
+@PostMapping
+public ResponseEntity<?> createDuty(@RequestBody Duty duty) {
+    // Check if the room has an active duty that isn't verified yet (using uppercase VERIFIED)
+    boolean hasActiveDuty = dutyRepository.existsByRoomNameAndStatusNot(duty.getRoomName(), DutyStatus.VERIFIED);
+    
+    if (hasActiveDuty) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body("This room is already assigned!");
     }
+    return ResponseEntity.ok(dutyService.createDuty(duty));
+}
     // 5. (Admin) Allot a faculty member to an existing duty
     @PatchMapping("/{id}/faculty")
     public ResponseEntity<Duty> allotFaculty(

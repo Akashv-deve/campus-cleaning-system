@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 import com.example.model.Duty;
+import com.example.model.DutyStatus;
 
 
 public interface DutyRepository extends MongoRepository<Duty, String> {
