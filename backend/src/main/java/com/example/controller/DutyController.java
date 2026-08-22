@@ -20,16 +20,15 @@ import com.example.model.DutyStatus;
 import com.example.repository.DutyRepository;
 import com.example.service.DutyService;
 
-import lombok.RequiredArgsConstructor; // <-- ADD THIS IMPORT
 @RestController
 @RequestMapping("/api/duties")
-@CrossOrigin(origins = "*") // Crucial: Allows your Flutter emulator to talk to the backend
-@RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class DutyController {
 
     private final DutyService dutyService;
     private final DutyRepository dutyRepository;
 
+    // EXACTLY ONE CONSTRUCTOR!
     public DutyController(DutyService dutyService, DutyRepository dutyRepository) {
         this.dutyService = dutyService;
         this.dutyRepository = dutyRepository;
