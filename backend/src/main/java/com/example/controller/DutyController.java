@@ -59,10 +59,12 @@ public class DutyController {
     // 4. (Admin) Create a new duty assignment
     @PostMapping
     public ResponseEntity<?> createDuty(@RequestBody Duty duty) {
-    if (dutyRepository.existsByRoomName(duty.getRoomName())) {
-        // Rejects the request before it even reaches your DutyService
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body("This room is already assigned!");
+        // Check if the room already has a Pending or Completed task
+        boolean hasActiveDuty = dutyRepository.existsByRoomNameAndStatusNot(duty.getRoomName(), DutyStatus.verified);
+        
+        if (hasActiveDuty) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("This room already has an active duty pending verification!");
         }
         return ResponseEntity.ok(dutyService.createDuty(duty));
     }
