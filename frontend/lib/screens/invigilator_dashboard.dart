@@ -225,19 +225,20 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF6F7FB),
         elevation: 0,
+        backgroundColor: const Color(0xFFF4F6F8),
         surfaceTintColor: Colors.transparent,
+        // REMOVED the hardcoded "PROF. " prefix here!
         title: Text(
-          'Verify: PROF. ${widget.facultyName.toUpperCase()}',
-          style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87, fontSize: 20),
+          'Verify: ${widget.facultyName.toUpperCase()}', 
+          style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.black87, fontSize: 20),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: Colors.black54),
             onPressed: _logout,
+            tooltip: 'Logout',
           ),
-          const SizedBox(width: 4),
         ],
       ),
       body: _isLoading 
