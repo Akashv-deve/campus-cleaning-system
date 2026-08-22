@@ -109,21 +109,38 @@ class VerificationCard extends StatelessWidget {
                               color: Colors.black87,
                             ),
                           ),
-                          const SizedBox(height: 3),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: accent[0],
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              duty.department,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: accent[1],
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: accent[0],
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  duty.department,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: accent[1],
+                                  ),
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              // NEW: Shows the Sweeper who completed the room
+                              Expanded(
+                                child: Text(
+                                  'Sweeper: ${duty.sweeperName?.toUpperCase() ?? "N/A"}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

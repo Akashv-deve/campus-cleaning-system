@@ -142,6 +142,12 @@ class _RoomCardState extends State<RoomCard> {
                     Text(duty.roomName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
                     const SizedBox(height: 4),
                     Text(duty.department, style: TextStyle(fontSize: 15, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+                    Text(
+                      isTamil 
+                        ? 'ஆசிரியர்: ${duty.facultyName?.replaceAll('Incharge: ', '').replaceAll('Prof. ', '').toUpperCase() ?? "N/A"}' 
+                        : 'Incharge: ${duty.facultyName?.replaceAll('Incharge: ', '').replaceAll('Prof. ', '').toUpperCase() ?? "N/A"}', 
+                      style: TextStyle(fontSize: 13, color: Colors.indigo.shade400, fontWeight: FontWeight.bold),
+                    ),
                   ],
                 ),
               ),
