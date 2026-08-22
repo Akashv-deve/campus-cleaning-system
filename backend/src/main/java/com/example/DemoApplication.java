@@ -10,10 +10,14 @@ public class DemoApplication {
 
         String mongoUri = System.getenv("MONGODB_URI");
 
-        System.out.println(
-            "MONGODB_URI present: " +
-            (mongoUri != null && !mongoUri.isBlank())
-        );
+System.out.println("MONGODB_URI present: " +
+        (mongoUri != null && !mongoUri.isBlank()));
+
+if (mongoUri != null) {
+    System.out.println("MONGODB_URI starts with mongodb+srv:// : " +
+            mongoUri.startsWith("mongodb+srv://"));
+    System.out.println("MONGODB_URI length: " + mongoUri.length());
+}
 
         SpringApplication.run(DemoApplication.class, args);
     }
