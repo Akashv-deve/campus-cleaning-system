@@ -65,6 +65,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
       debugPrint("Delete failed: $e");
     }
   }
+  void _clearScreenDuties() {
+    setState(() {
+      // Clears the local list ONLY. The database remains completely untouched!
+      _allDuties.clear(); 
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.cleaning_services_rounded, color: Colors.white),
+            SizedBox(width: 10),
+            Text('Screen cleared. (Data is still safe in database)'),
+          ],
+        ),
+        backgroundColor: const Color(0xFF3949AB), 
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
 
   void _showPresetsMenu(BuildContext context) {
     showModalBottomSheet(
@@ -571,31 +593,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               onPressed: () async {
                                 String finalRoom = isCustomRoom ? customRoomController.text.trim() : selectedRoom;
                                 String finalSweeper = isCustomSweeper ? customSweeperController.text.trim().toLowerCase() : selectedSweeper;
-                                String finalInc = isCustomIncharge ? customInchargeController.text.trim() : selectedIncharge; // Raw Name Used!
+                                String finalInc = isCustomIncharge ? customInchargeController.text.trim() : selectedIncharge; 
                                 
                                 if (finalRoom.isEmpty || finalSweeper.isEmpty || (isCustomIncharge && customInchargeController.text.trim().isEmpty)) return;
                                 
-                                Navigator.pop(context);
-                                setState(() => _isLoading = true);
-                                try { 
-                                await ApiService.createDuty(finalRoom, 'CSE', finalSweeper, finalInc); 
-                                await _fetchDuties(); 
-                              } catch (e) { 
-                                debugPrint("Creation failed: $e"); 
-                                setState(() => _isLoading = false); 
+                                // 1. CRITICAL FIX: Capture the messenger BEFORE closing the dialog!
+                                final messenger = ScaffoldMessenger.of(context);
                                 
-                                // NEW: Show the error message to the Admin!
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    // .replaceAll removes the ugly "Exception: " prefix from the text
-                                    content: Text(e.toString().replaceAll('Exception: ', '')), 
-                                    backgroundColor: const Color(0xFFC62828), // Red color for errors
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  ),
-                                );
-                              }
+                                Navigator.pop(context); // Close dialog safely
+                                setState(() => _isLoading = true);
+                                
+                                try { 
+                                  await ApiService.createDuty(finalRoom, 'CSE', finalSweeper, finalInc); 
+                                  await _fetchDuties(); 
+                                } catch (e) { 
+                                  setState(() => _isLoading = false); 
+                                  
+                                  // 2. Use the captured messenger to force the red pop-up to show!
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text(e.toString().replaceAll('Exception: ', '')),
+                                      backgroundColor: const Color(0xFFC62828),
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    )
+                                  );
+                                }
                               },
                               child: const Text('Assign', style: TextStyle(fontWeight: FontWeight.w700)),
                             ),
@@ -694,10 +717,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
             child: Row(
               children: [
                 Expanded(child: _ActionCard(title: 'Reports', icon: Icons.picture_as_pdf_rounded, color: const Color(0xFF1976D2), onTap: () => _showReportSelector(context))),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Expanded(child: _ActionCard(title: 'Presets', icon: Icons.bookmark_added_rounded, color: const Color(0xFF8E24AA), onTap: () => _showPresetsMenu(context))),
-                const SizedBox(width: 12),
-                Expanded(child: _ActionCard(title: 'Purge', icon: Icons.auto_delete_rounded, color: const Color(0xFFD32F2F), onTap: _bulkDeleteLogs)),
+                const SizedBox(width: 8),
+                // NEW: UI-Only Clear Screen Button
+                Expanded(child: _ActionCard(title: 'Clear View', icon: Icons.layers_clear_rounded, color: const Color(0xFFEF6C00), onTap: _clearScreenDuties)),
+                const SizedBox(width: 8),
+                // EXISTING: Database Purge Button
+                Expanded(child: _ActionCard(title: 'DB Purge', icon: Icons.auto_delete_rounded, color: const Color(0xFFD32F2F), onTap: _bulkDeleteLogs)),
               ],
             ),
           ),
