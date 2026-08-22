@@ -57,25 +57,23 @@ class ApiService {
   }
   // 3. (Admin) Create a new duty and assign both Sweeper and Faculty instantly
   static Future<void> createDuty(String roomName, String department, String sweeperName, String facultyName) async {
-    try {
-      final response = await http.post(
-        Uri.parse(baseUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'roomName': roomName,
-          'department': department,
-          'sweeperName': sweeperName, 
-          'facultyName': facultyName, // <-- Spring Boot will auto-save this!
-        }),
-      );
+    // Removed the generic try-catch so it stops wrapping our exact error messages!
+    final response = await http.post(
+      Uri.parse(baseUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'roomName': roomName,
+        'department': department,
+        'sweeperName': sweeperName, 
+        'facultyName': facultyName, 
+      }),
+    );
 
-      if (response.statusCode == 409) {
-        throw Exception('This room is already assigned!');
-      } else if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('Failed to create duty'); // Existing block[cite: 2]
-      }
-    } catch (e) {
-      throw Exception('Error creating duty: $e');
+    if (response.statusCode == 409) {
+      throw Exception('This room is already assigned!');
+    } else if (response.statusCode != 200 && response.statusCode != 201) {
+      // This will now show the EXACT error the Java backend is screaming about
+      throw Exception(response.body.isNotEmpty ? response.body : 'Server Error: ${response.statusCode}');
     }
   }
 
