@@ -187,27 +187,39 @@ class _LogReportScreenState extends State<LogReportScreen> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.reportType == 'sweeper' ? (duty.sweeperName?.toUpperCase() ?? 'UNASSIGNED') : duty.roomName, 
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            widget.reportType == 'sweeper' 
-                                ? 'Room: ${duty.roomName} • Completed: ${duty.completedTime ?? "Pending"}'
-                                : 'Sweeper: ${duty.sweeperName?.toUpperCase() ?? "N/A"} • Verified: ${duty.verifiedTime ?? "Pending"}', 
-                            style: TextStyle(color: Colors.grey.shade600, fontSize: 13)
-                          ),
-                        ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.reportType == 'sweeper' ? (duty.sweeperName?.toUpperCase() ?? 'UNASSIGNED') : duty.roomName, 
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.reportType == 'sweeper' 
+                                  ? 'Room: ${duty.roomName} • Completed: ${duty.completedTime ?? "Pending"}'
+                                  : 'Sweeper: ${duty.sweeperName?.toUpperCase() ?? "N/A"} • Verified: ${duty.verifiedTime ?? "Pending"}', 
+                              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                       ),
-                      Text(
-                        duty.status == DutyStatus.completed ? 'VERIFYING...' : duty.status.name.toUpperCase(), 
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: duty.status == DutyStatus.verified ? Colors.green : Colors.orange)
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Text(
+                          duty.status == DutyStatus.completed ? 'VERIFYING...' : duty.status.name.toUpperCase(), 
+                          textAlign: TextAlign.right,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: duty.status == DutyStatus.verified ? Colors.green : Colors.orange),
+                        ),
                       ),
                     ],
                   ),

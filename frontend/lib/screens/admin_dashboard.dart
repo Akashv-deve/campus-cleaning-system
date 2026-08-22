@@ -17,22 +17,46 @@ class _AdminDashboardState extends State<AdminDashboard> {
   String _selectedFilter = 'All';
   List<Duty> _allDuties = []; 
   bool _isLoading = true;
+  List<String> _hiddenDutyIds = []; // Locally-hidden duty IDs (Clear View), persisted via SharedPreferences
 
   @override
   void initState() {
     super.initState();
+    _loadHiddenDuties();
     _fetchDuties();
+  }
+
+  Future<void> _loadHiddenDuties() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hidden = prefs.getStringList('hidden_duties') ?? [];
+    if (!mounted) return;
+    setState(() => _hiddenDutyIds = hidden);
   }
 
   Future<void> _fetchDuties() async {
     try {
       final fetchedDuties = await ApiService.getAllDuties();
+
+      // Cleanup: if a hidden duty was actually deleted from the DB (via
+      // _deleteDuty / _resetDatabase / a fresh purge), there's no need to
+      // keep masking an ID that no longer exists — drop it so the
+      // 'hidden_duties' list in SharedPreferences doesn't grow forever.
+      final fetchedIds = fetchedDuties.map((d) => d.id).toSet();
+      final prunedHiddenIds = _hiddenDutyIds.where((id) => fetchedIds.contains(id)).toList();
+      if (prunedHiddenIds.length != _hiddenDutyIds.length) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('hidden_duties', prunedHiddenIds);
+      }
+
+      if (!mounted) return;
       setState(() {
         _allDuties = fetchedDuties.reversed.toList();
+        _hiddenDutyIds = prunedHiddenIds;
         _isLoading = false;
       });
     } catch (e) {
       debugPrint("Error fetching duties: $e");
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
@@ -65,11 +89,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
       debugPrint("Delete failed: $e");
     }
   }
-  void _clearScreenDuties() {
-    setState(() {
-      // Clears the local list ONLY. The database remains completely untouched!
-      _allDuties.clear(); 
-    });
+  Future<void> _clearScreenDuties() async {
+    // Local ID Masking: instead of wiping _allDuties (which would blank out
+    // LogReportScreen and every stat that reads from it), we remember which
+    // IDs to hide from the *view* only. _allDuties itself is left completely
+    // untouched, so reports and re-fetches still see everything.
+    final idsToHide = _allDuties.map((duty) => duty.id).toList();
+    final updatedHiddenIds = {..._hiddenDutyIds, ...idsToHide}.toList();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('hidden_duties', updatedHiddenIds);
+
+    if (!mounted) return;
+    setState(() => _hiddenDutyIds = updatedHiddenIds);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -424,6 +456,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  void _showPurgeMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context, backgroundColor: Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
+              const SizedBox(height: 24),
+              const Row(children: [Icon(Icons.auto_delete_rounded, color: Color(0xFFD32F2F), size: 28), SizedBox(width: 12), Text('Database Purge', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87))]),
+              const SizedBox(height: 24),
+              _buildMenuOption(context, title: 'Purge Before a Date', subtitle: 'Delete every dated log on or before a cut-off date', icon: Icons.event_busy_rounded, color: const Color(0xFFEF6C00), onTap: () { Navigator.pop(context); _purgeBeforeDate(); }),
+              const SizedBox(height: 12),
+              _buildMenuOption(context, title: 'Reset Everything', subtitle: 'Permanently delete ALL duties, no exceptions', icon: Icons.delete_forever_rounded, color: const Color(0xFFD32F2F), onTap: () { Navigator.pop(context); _resetDatabase(); }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _showReportSelector(BuildContext context) {
     showModalBottomSheet(
       context: context, backgroundColor: Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
@@ -447,26 +502,102 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Future<void> _bulkDeleteLogs() async {
-    final selectedDate = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2023), lastDate: DateTime.now(), helpText: 'SELECT CUT-OFF DATE', confirmText: 'PURGE OLD LOGS');
-    if (selectedDate == null) return; 
+  Future<void> _resetDatabase() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Reset Database?'),
+          content: const Text('This will permanently delete ALL duties (Pending, Completed, and Verified).'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFFD32F2F)),
+              child: const Text('Reset', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+    if (!mounted) return;
 
     setState(() => _isLoading = true);
     int deletedCount = 0;
 
+    // No status check at all — every duty currently loaded gets deleted,
+    // regardless of whether it's pending, completed, or verified.
     for (var duty in _allDuties) {
-      if (duty.status == DutyStatus.verified && duty.verifiedTime != null) {
-        try {
-          final parts = duty.verifiedTime!.split(', ');
-          final dateParts = parts[0].split('/');
-          final dutyDate = DateTime(DateTime.now().year, int.parse(dateParts[1]), int.parse(dateParts[0]));
-          if (dutyDate.isBefore(selectedDate) || dutyDate.isAtSameMomentAs(selectedDate)) { await ApiService.deleteDuty(duty.id); deletedCount++; }
-        } catch (e) { debugPrint("Date parse skipped: $e"); }
+      try {
+        await ApiService.deleteDuty(duty.id);
+        deletedCount++;
+      } catch (e) {
+        debugPrint("Delete failed for ${duty.id}: $e");
       }
     }
-    await _fetchDuties(); 
+
+    await _fetchDuties();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(deletedCount > 0 ? 'Successfully purged $deletedCount old records.' : 'No verified logs found before that date.'), backgroundColor: deletedCount > 0 ? const Color(0xFF2E7D32) : const Color(0xFFEF6C00), behavior: SnackBarBehavior.floating));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(deletedCount > 0 ? 'Database reset. $deletedCount duties permanently deleted.' : 'Nothing to delete.'),
+        backgroundColor: deletedCount > 0 ? const Color(0xFF2E7D32) : const Color(0xFFEF6C00),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _purgeBeforeDate() async {
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2023),
+      lastDate: DateTime.now(),
+      helpText: 'SELECT CUT-OFF DATE',
+      confirmText: 'PURGE BEFORE THIS DATE',
+    );
+    if (selectedDate == null) return;
+    if (!mounted) return;
+
+    setState(() => _isLoading = true);
+    int deletedCount = 0;
+
+    // Everything on/before the chosen date gets deleted — regardless of
+    // status. We use verifiedTime when available (most reliable, since it's
+    // set once a room is actually signed off), falling back to
+    // completedTime for rooms that were completed but never verified, so
+    // pending/in-progress work with no date on it yet is safely skipped.
+    for (var duty in _allDuties) {
+      final dateString = duty.verifiedTime ?? duty.completedTime;
+      if (dateString == null) continue;
+      try {
+        final parts = dateString.split(', ');
+        final dateParts = parts[0].split('/');
+        final dutyDate = DateTime(DateTime.now().year, int.parse(dateParts[1]), int.parse(dateParts[0]));
+        if (dutyDate.isBefore(selectedDate) || dutyDate.isAtSameMomentAs(selectedDate)) {
+          await ApiService.deleteDuty(duty.id);
+          deletedCount++;
+        }
+      } catch (e) {
+        debugPrint("Date parse skipped for ${duty.id}: $e");
+      }
+    }
+
+    await _fetchDuties();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(deletedCount > 0 ? 'Purged $deletedCount records on or before that date.' : 'No dated logs found before that date.'),
+        backgroundColor: deletedCount > 0 ? const Color(0xFF2E7D32) : const Color(0xFFEF6C00),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   void _showEditAssignmentDialog(Duty duty) {
@@ -678,11 +809,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    int pendingCount = _allDuties.where((d) => d.status == DutyStatus.pending).length;
-    int completedCount = _allDuties.where((d) => d.status == DutyStatus.completed).length;
-    int verifiedCount = _allDuties.where((d) => d.status == DutyStatus.verified).length;
+    // visibleDuties = _allDuties minus anything locally hidden via "Clear View".
+    // _allDuties itself stays raw and unfiltered — LogReportScreen (see
+    // _showReportSelector above) is passed _allDuties directly, so PDFs/reports
+    // keep seeing everything regardless of what's been cleared from the screen.
+    List<Duty> visibleDuties = _allDuties.where((duty) => !_hiddenDutyIds.contains(duty.id)).toList();
 
-    List<Duty> filteredDuties = _allDuties.where((duty) {
+    int pendingCount = visibleDuties.where((d) => d.status == DutyStatus.pending).length;
+    int completedCount = visibleDuties.where((d) => d.status == DutyStatus.completed).length;
+    int verifiedCount = visibleDuties.where((d) => d.status == DutyStatus.verified).length;
+
+    List<Duty> filteredDuties = visibleDuties.where((duty) {
       if (_selectedFilter == 'All') return true;
       if (_selectedFilter == 'Pending' && duty.status == DutyStatus.pending) return true;
       if (_selectedFilter == 'Check' && duty.status == DutyStatus.completed) return true;
@@ -724,7 +861,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 Expanded(child: _ActionCard(title: 'Clear View', icon: Icons.layers_clear_rounded, color: const Color(0xFFEF6C00), onTap: _clearScreenDuties)),
                 const SizedBox(width: 8),
                 // EXISTING: Database Purge Button
-                Expanded(child: _ActionCard(title: 'DB Purge', icon: Icons.auto_delete_rounded, color: const Color(0xFFD32F2F), onTap: _bulkDeleteLogs)),
+                Expanded(child: _ActionCard(title: 'DB Purge', icon: Icons.auto_delete_rounded, color: const Color(0xFFD32F2F), onTap: () => _showPurgeMenu(context))),
               ],
             ),
           ),
