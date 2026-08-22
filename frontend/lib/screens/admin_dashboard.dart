@@ -37,8 +37,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  void _logout() {
-    Navigator.pushReplacementNamed(context, '/');
+  void _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('userRole');
+    await prefs.remove('userName');
+    
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, '/'); // Or Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
   }
 
   Color _getStatusColor(DutyStatus status) {

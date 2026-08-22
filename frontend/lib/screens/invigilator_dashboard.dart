@@ -4,6 +4,7 @@ import '../models/duty_model.dart';
 import '../widgets/verification_card.dart';
 import '../services/api_service.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class InvigilatorDashboard extends StatefulWidget {
   final String facultyName; // <-- Accepts the name from the login screen!
@@ -187,8 +188,13 @@ class _InvigilatorDashboardState extends State<InvigilatorDashboard> {
     );
   }
 
-  void _logout() {
-    Navigator.pushReplacementNamed(context, '/');
+  void _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('userRole');
+    await prefs.remove('userName');
+    
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, '/'); // Or Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
   }
 
   // --- PREMIUM UX: SHIMMER LOADING EFFECT ---

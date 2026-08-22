@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'sweeper_dashboard.dart';
 import 'invigilator_dashboard.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -35,6 +36,13 @@ class _LoginScreenState extends State<LoginScreen> {
     
     if (!mounted) return;
     setState(() => _isLoading = false);
+
+    // Save to local storage for persistent login!
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userRole', _selectedRole);
+    await prefs.setString('userName', username);
+
+    if (!mounted) return;
 
     // EXPLICIT ROLE ROUTING
     if (_selectedRole == 'admin') {

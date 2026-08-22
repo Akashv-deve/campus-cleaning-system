@@ -1,9 +1,8 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart'; // NEW IMPORT
-
-import 'screens/login_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'screens/admin_dashboard.dart';
+import 'screens/splash_screen.dart';
 
 void main() {
   runApp(const CampusCleaningApp());
@@ -49,9 +48,12 @@ class CampusCleaningApp extends StatelessWidget {
           },
         ),
       ),
-      initialRoute: '/',
+      
+      // THIS IS THE FIX: Use home instead of initialRoute
+      home: const SplashScreen(), 
+      
       routes: {
-        '/': (context) => const LoginScreen(),
+        // We removed the '/' route here, because 'home' handles the startup now!
         '/admin': (context) => const AdminDashboard(),
       },
     );

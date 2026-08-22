@@ -4,6 +4,7 @@ import '../models/duty_model.dart';
 import '../widgets/room_card.dart';
 import '../services/api_service.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SweeperDashboard extends StatefulWidget {
   final String sweeperName; // <-- Accepts the name from the login screen!
@@ -50,8 +51,13 @@ class _SweeperDashboardState extends State<SweeperDashboard> {
     }
   }
 
-  void _logout() {
-    Navigator.pushReplacementNamed(context, '/');
+  void _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('userRole');
+    await prefs.remove('userName');
+    
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, '/'); // Or Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
   }
 
   // --- PREMIUM UX: SHIMMER LOADING EFFECT ---
