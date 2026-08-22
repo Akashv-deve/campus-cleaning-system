@@ -1,37 +1,42 @@
 package com.example;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.core.env.Environment;
 
 @SpringBootApplication
 public class DemoApplication {
 
-	private static final Logger log = LoggerFactory.getLogger(DemoApplication.class);
-
 	public static void main(String[] args) {
-		SpringApplication.run(DemoApplication.class, args);
-	}
+		ConfigurableApplicationContext context = SpringApplication.run(DemoApplication.class, args);
 
-	// DIAGNOSTIC ONLY — safe to remove once the "localhost:27017" connection
-	// issue is confirmed fixed. Prints (with credentials masked) exactly
-	// which Mongo URI Spring resolved at startup, straight into the Render
-	// logs. If this ever prints "localhost" instead of your Atlas hostname,
-	// that means spring.data.mongodb.uri isn't reaching the app at
-	// all — most likely an environment variable on Render (check the
-	// Environment tab for a stray/blank MONGODB_URI or
-	// SPRING_DATA_MONGODB_URI) is overriding application.properties, since
-	// env vars always take precedence over the properties file.
-	@Bean
-	CommandLineRunner logResolvedMongoUri(@Value("${spring.data.mongodb.uri:NOT SET}") String mongoUri) {
-		return args -> {
-			String masked = mongoUri.replaceAll("://([^:]+):([^@]+)@", "://$1:****@");
-			log.info(">>> Resolved Mongo URI at startup: {}", masked);
-		};
+		// DIAGNOSTIC ONLY — safe to delete once this is resolved.
+		//
+		// Every test so far (System.getenv("MONGODB_URI")) has only proven
+		// that the raw OS-level environment variable exists and looks right.
+		// It has NOT proven that Spring's own Environment actually resolves
+		// spring.data.mongodb.uri to that value — and that resolved property
+		// is the ONLY thing MongoAutoConfiguration actually reads to build
+		// the Mongo client. This asks that exact question directly, using
+		// plain System.out (not a logger) so it can't get silently filtered
+		// by a log-level config the way the previous CommandLineRunner
+		// attempt apparently did.
+		Environment env = context.getEnvironment();
+		String resolved = env.getProperty("spring.data.mongodb.uri");
+
+		System.out.println("=== MONGO DIAGNOSTIC ===");
+		if (resolved == null) {
+			System.out.println("spring.data.mongodb.uri resolved by Spring: NULL — property was not found at all.");
+			System.out.println("This means application.properties on the deployed image either doesn't have");
+			System.out.println("this exact key, or this build isn't picking up the file you think it is.");
+		} else {
+			String masked = resolved.replaceAll("://([^:]+):([^@]+)@", "://$1:****@");
+			System.out.println("spring.data.mongodb.uri resolved by Spring: " + masked);
+			System.out.println("Length: " + resolved.length());
+			System.out.println("Contains 'localhost': " + resolved.toLowerCase().contains("localhost"));
+		}
+		System.out.println("=== END MONGO DIAGNOSTIC ===");
 	}
 
 }
