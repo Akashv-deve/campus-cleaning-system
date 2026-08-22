@@ -7,9 +7,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class DemoApplication {
 
     public static void main(String[] args) {
-        System.out.println("MONGODB_URI present: " +
-                (System.getenv("MONGODB_URI") != null &&
-                 !System.getenv("MONGODB_URI").isBlank()));
+
+        String mongoUri = System.getenv("MONGODB_URI");
+
+        System.out.println(
+            "MONGODB_URI present: " +
+            (mongoUri != null && !mongoUri.isBlank())
+        );
 
         SpringApplication.run(DemoApplication.class, args);
     }
