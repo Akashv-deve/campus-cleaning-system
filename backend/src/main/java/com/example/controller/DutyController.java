@@ -30,6 +30,11 @@ public class DutyController {
     private final DutyService dutyService;
     private final DutyRepository dutyRepository;
 
+    public DutyController(DutyService dutyService, DutyRepository dutyRepository) {
+        this.dutyService = dutyService;
+        this.dutyRepository = dutyRepository;
+    }
+
     // 1. Get duties for a specific department (For Sweeper & Invigilator Dashboards)
     @GetMapping("/department/{department}")
     public ResponseEntity<List<Duty>> getDutiesByDepartment(@PathVariable String department) {
