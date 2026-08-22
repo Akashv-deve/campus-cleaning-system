@@ -376,6 +376,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           } catch (e) {
                             setState(() => _isLoading = false);
                             debugPrint("Deploy failed: $e");
+                            
+                            // NEW: Show the error message to the Admin!
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(e.toString().replaceAll('Exception: ', '')),
+                                backgroundColor: const Color(0xFFC62828), 
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            );
                           }
                         },
                         child: const Text('Deploy Preset'),
@@ -566,7 +577,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 
                                 Navigator.pop(context);
                                 setState(() => _isLoading = true);
-                                try { await ApiService.createDuty(finalRoom, 'CSE', finalSweeper, finalInc); await _fetchDuties(); } catch (e) { debugPrint("Creation failed: $e"); setState(() => _isLoading = false); }
+                                try { 
+                                await ApiService.createDuty(finalRoom, 'CSE', finalSweeper, finalInc); 
+                                await _fetchDuties(); 
+                              } catch (e) { 
+                                debugPrint("Creation failed: $e"); 
+                                setState(() => _isLoading = false); 
+                                
+                                // NEW: Show the error message to the Admin!
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    // .replaceAll removes the ugly "Exception: " prefix from the text
+                                    content: Text(e.toString().replaceAll('Exception: ', '')), 
+                                    backgroundColor: const Color(0xFFC62828), // Red color for errors
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                );
+                              }
                               },
                               child: const Text('Assign', style: TextStyle(fontWeight: FontWeight.w700)),
                             ),
