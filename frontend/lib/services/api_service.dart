@@ -70,11 +70,17 @@ class ApiService {
     );
 
     if (response.statusCode == 409) {
-      throw Exception('This room is already assigned!');
-    } else if (response.statusCode != 200 && response.statusCode != 201) {
-      // This will now show the EXACT error the Java backend is screaming about
-      throw Exception(response.body.isNotEmpty ? response.body : 'Server Error: ${response.statusCode}');
-    }
+        throw Exception('This room is already assigned!');
+      } else if (response.statusCode == 502 || response.statusCode == 503) {
+        throw Exception('Server is waking up or restarting. Please wait 60 seconds and try again!');
+      } else if (response.statusCode != 200 && response.statusCode != 201) {
+        // Prevent giant HTML code dumps on the screen if the server sends a webpage back
+        String errorMsg = response.body;
+        if (errorMsg.contains('<html') || errorMsg.length > 150) {
+          errorMsg = 'Server Error: ${response.statusCode}';
+        }
+        throw Exception(errorMsg);
+      }
   }
 
   // 4. (Admin) Update both Sweeper and Faculty on an existing duty
