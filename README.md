@@ -19,3 +19,9 @@
 
 ## 🚀 Future Roadmap
 * **Targeted Push Notifications:** Implementing Firebase Cloud Messaging (FCM) via topic subscriptions (e.g., `sweeper_ramesh`) to eliminate complex token-based user databases.
+<details>
+<summary><b>📸 Click to expand all app screens</b></summary>
+
+*[Drag and drop your remaining 10+ screenshots right here]*
+
+</details>
