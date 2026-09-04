@@ -27,6 +27,7 @@
 <details>
 <summary><b>📸 Click to expand all app screens</b></summary>
 
-*[Drag and drop your remaining 10+ screenshots right here]*
+<img width="1080" height="2192" alt="Screenshot_20260904_111825 jpg" src="https://github.com/user-attachments/assets/04f236df-8d2e-4c1b-9898-21b05fcd7d16" />
+
 
 </details>
