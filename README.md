@@ -1,6 +1,11 @@
 # DutyFlow — Campus Facility Management System
 
 > A full-stack, role-based assignment and verification engine built for enterprise campus management.
+> ## 📥 Download APK
+
+[![Download APK](https://img.shields.io/badge/Download-Android%20APK-brightgreen?logo=android)](https://github.com/Akashv-deve/campus-cleaning-system/releases/latest)
+
+> Download the latest stable Android release of DutyFlow from GitHub Releases.
 
 [![Flutter](https://img.shields.io/badge/Frontend-Flutter-02569B?logo=flutter&logoColor=white)](https://flutter.dev/)
 [![Spring Boot](https://img.shields.io/badge/Backend-Spring%20Boot-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
